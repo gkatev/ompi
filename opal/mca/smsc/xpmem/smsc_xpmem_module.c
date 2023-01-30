@@ -261,7 +261,7 @@ void mca_smsc_xpmem_unmap_peer_region(void *ctx)
     }
 }
 
-static int mca_smsc_xpmem_endpoint_rcache_cleanup(mca_rcache_base_registration_t *reg, void *ctx)
+static int mca_smsc_xpmem_endpoint_rcache_entry_cleanup(mca_rcache_base_registration_t *reg, void *ctx)
 {
 	printf("cleanup reg %p-%p count %d\n", reg->base, reg->bound, reg->ref_count);
 
@@ -284,7 +284,7 @@ static void mca_smsc_xpmem_cleanup_endpoint(mca_smsc_xpmem_endpoint_t *endpoint)
 
     /* clean out the registration cache */
     (void) mca_rcache_base_vma_iterate(endpoint->vma_module, NULL, (size_t) -1, true,
-                                       mca_smsc_xpmem_endpoint_rcache_cleanup, NULL);
+                                       mca_smsc_xpmem_endpoint_rcache_entry_cleanup, NULL);
 
     OBJ_RELEASE(endpoint->vma_module);
     xpmem_release(endpoint->apid);

@@ -84,11 +84,16 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
     if (OPAL_UNLIKELY(bound > xpmem_endpoint->address_max)) {
         bound = xpmem_endpoint->address_max;
     }
+    
+    printf("user ptr %p size %lu base %p bound %p\n", remote_ptr, size, base, bound);
+	printf("search base %p len %p\n", base, bound - base + 1);
 
     rc = mca_rcache_base_vma_find(vma_module, (void *) base, bound - base + 1, &reg);
     assert(OPAL_SUCCESS == rc);
 
     if (reg) {
+		printf("region match %p-%p\n", reg->base, reg->bound);
+		
         int32_t old_ref_count = opal_atomic_fetch_add_32(&reg->ref_count, 1);
 
         if (0 == old_ref_count) {
@@ -97,6 +102,8 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
             reg = NULL;
         }
     } else {
+		printf("no region match\n");
+		
         /* If there is a registration that overlaps with the requested range, but
          * does not fully cover it, we destroy it and make in its place a new one
          * that covers both the existing and the new range. */
@@ -109,6 +116,8 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
         // Ideally, we would want a find() method capable of partial matching
         uintptr_t search_base[] = {base, bound, base - 1, bound + 1};
         for (size_t i = 0; i < sizeof(search_base)/sizeof(search_base[0]); i++) {
+			printf("search overlapping %p-%p\n", search_base[i], search_base[i]+1);
+			
             rc = mca_rcache_base_vma_find(vma_module, (void *) search_base[i], 1, &reg);
             assert(OPAL_SUCCESS == rc);
 
@@ -118,6 +127,8 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
         }
 
         if (reg) {
+			printf("found overlapping\n");
+			
             /* Found an overlapping area. Set the invalid flag, to mark the deletion
              * of this old registration (will take place in unmap_peer_region). If
              * another thread has already marked deletion, do nothing. */
@@ -126,6 +137,8 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
                 (volatile opal_atomic_int32_t *) &reg->flags, MCA_RCACHE_FLAGS_INVALID);
 
             if (!(old_flags & MCA_RCACHE_FLAGS_INVALID)) {
+				printf("handling merge\n");
+				
                 base = opal_min(base, (uintptr_t) reg->base);
                 bound = opal_max(bound, (uintptr_t) reg->bound);
 
@@ -139,7 +152,9 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
                     opal_atomic_add(&reg->ref_count, 1);
                 
                 mca_smsc_xpmem_unmap_peer_region(reg);
-            }
+            } else {
+				printf("no overlapping\n");
+			}
 
             reg = NULL;
         }
@@ -172,6 +187,8 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
                             (void *) endpoint, reg->base, reg->bound);
 
         reg->rcache_context = xpmem_attach(xpmem_addr, bound - base + 1, NULL);
+        printf("xpmem attach(%p, 0x%lx) -> %p\n", base, bound - base + 1, reg->rcache_context);
+        
         if (OPAL_UNLIKELY((void *) -1 == reg->rcache_context)) {
             uintptr_t old_bound = bound;
 
@@ -192,6 +209,8 @@ void *mca_smsc_xpmem_map_peer_region(mca_smsc_endpoint_t *endpoint, uint64_t fla
                 return NULL;
             }
         }
+        
+        printf("new reg %p-%p ref count %d\n", reg->base, reg->bound, reg->ref_count);
 
         opal_memchecker_base_mem_defined(reg->rcache_context, bound - base + 1);
 
@@ -217,9 +236,13 @@ void mca_smsc_xpmem_unmap_peer_region(void *ctx)
     mca_rcache_base_registration_t *reg = (mca_rcache_base_registration_t *) ctx;
     mca_smsc_xpmem_endpoint_t *endpoint = (mca_smsc_xpmem_endpoint_t *) reg->alloc_base;
     int32_t ref_count;
+    
+    printf("mca_smsc_xpmem_unmap_peer_region(reg %p-%p) count %d\n",
+		reg->base, reg->bound, reg->ref_count);
 
     ref_count = opal_atomic_add_fetch_32(&reg->ref_count, -1);
     if (OPAL_UNLIKELY(0 == ref_count)) {
+		printf("UNMAP reg %p-%p\n", reg->base, reg->bound);
         opal_output_verbose(MCA_BASE_VERBOSE_INFO, opal_smsc_base_framework.framework_output,
                             "mca_smsc_xpmem_unmap_peer_region: deleting region mapping for "
                             "endpoint %p address range %p-%p",
@@ -240,10 +263,12 @@ void mca_smsc_xpmem_unmap_peer_region(void *ctx)
 
 static int mca_smsc_xpmem_endpoint_rcache_cleanup(mca_rcache_base_registration_t *reg, void *ctx)
 {
+	printf("cleanup reg %p-%p count %d\n", reg->base, reg->bound, reg->ref_count);
+
     // See respective comment in mca_smsc_xpmem_map_peer_region
     if (!(MCA_RCACHE_FLAGS_PERSIST & reg->flags))
         opal_atomic_add(&reg->ref_count, 1);
-
+    
     mca_smsc_xpmem_unmap_peer_region(reg);
     return OPAL_SUCCESS;
 }

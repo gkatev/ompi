@@ -102,6 +102,7 @@ struct mca_coll_han_allreduce_args_s {
     int seg_count;
     int root_up_rank;
     int root_low_rank;
+    int root_reduce_low_rank;
     int num_segments;
     int cur_seg;
     int w_rank;

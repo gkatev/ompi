@@ -1097,6 +1097,6 @@ int mca_coll_xhc_allreduce(const void *sbuf, void *rbuf,
         int count, ompi_datatype_t *datatype, ompi_op_t *op,
         ompi_communicator_t *ompi_comm, mca_coll_base_module_t *ompi_module) {
 
-    return mca_coll_xhc_allreduce_internal(sbuf, rbuf,
+    return xhc_allreduce_internal(sbuf, rbuf,
         count, datatype, op, ompi_comm, ompi_module, true);
 }

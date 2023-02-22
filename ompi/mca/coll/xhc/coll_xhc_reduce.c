@@ -54,7 +54,7 @@ int mca_coll_xhc_reduce(const void *sbuf, void *rbuf,
      * but an rbuf is available for all ranks. */
 
     if(root == -1 || (mca_coll_xhc_component.force_reduce && root == 0)) {
-        return mca_coll_xhc_allreduce_internal(sbuf, rbuf, count,
+        return xhc_allreduce_internal(sbuf, rbuf, count,
             datatype, op, ompi_comm, ompi_module, false);
     } else {
         xhc_coll_fns_t fallback = module->prev_colls;

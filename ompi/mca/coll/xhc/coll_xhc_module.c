@@ -57,7 +57,7 @@ static void mca_coll_xhc_module_construct(mca_coll_xhc_module_t *module) {
 }
 
 static void mca_coll_xhc_module_destruct(mca_coll_xhc_module_t *module) {
-    xhc_deinit(module);
+    xhc_fini(module);
 
     free(module->hierarchy_string);
     free(module->hierarchy);

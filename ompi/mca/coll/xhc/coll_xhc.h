@@ -370,16 +370,22 @@ struct xhc_loc_def_t {
 // coll_xhc_component.c
 // --------------------
 
+#define xhc_component_parse_hierarchy(...) mca_coll_xhc_component_parse_hierarchy(__VA_ARGS__)
+#define xhc_component_parse_chunk_sizes(...) mca_coll_xhc_component_parse_chunk_sizes(__VA_ARGS__)
+
 int mca_coll_xhc_component_init_query(bool enable_progress_threads,
     bool enable_mpi_threads);
 
-int xhc_component_parse_hierarchy(const char *val_str,
+int mca_coll_xhc_component_parse_hierarchy(const char *val_str,
     opal_list_t **level_defs_dst, int *nlevel_defs_dst);
-int xhc_component_parse_chunk_sizes(const char *val_str,
+int mca_coll_xhc_component_parse_chunk_sizes(const char *val_str,
     size_t **vals_dst, int *len_dst);
 
 // coll_xhc_module.c
 // -----------------
+
+#define xhc_module_set_coll_fns(...) mca_coll_xhc_module_set_coll_fns(__VA_ARGS__)
+#define xhc_module_prepare_hierarchy(...) mca_coll_xhc_module_prepare_hierarchy(__VA_ARGS__)
 
 mca_coll_base_module_t *mca_coll_xhc_module_comm_query(
     ompi_communicator_t *comm, int *priority);
@@ -389,29 +395,42 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *module,
 int mca_coll_xhc_module_disable(mca_coll_base_module_t *module,
     ompi_communicator_t *comm);
 
-xhc_coll_fns_t xhc_module_set_coll_fns(ompi_communicator_t *comm,
+xhc_coll_fns_t mca_coll_xhc_module_set_coll_fns(ompi_communicator_t *comm,
     xhc_coll_fns_t new);
 
-int xhc_module_prepare_hierarchy(mca_coll_xhc_module_t *module,
+int mca_coll_xhc_module_prepare_hierarchy(mca_coll_xhc_module_t *module,
     ompi_communicator_t *comm);
 
 // coll_xhc.c
 // ----------
 
-int xhc_lazy_init(mca_coll_xhc_module_t *module, ompi_communicator_t *comm);
-void xhc_deinit(mca_coll_xhc_module_t *module);
+#define xhc_lazy_init(...) mca_coll_xhc_lazy_init(__VA_ARGS__)
+#define xhc_fini(...) mca_coll_xhc_fini(__VA_ARGS__)
 
-void *xhc_get_cico(xhc_peer_info_t *peer_info, int rank);
+#define xhc_get_cico(...) mca_coll_xhc_get_cico(__VA_ARGS__)
 
-int xhc_copy_expose_region(void *base, size_t len, xhc_copy_data_t **region_data);
-void xhc_copy_region_post(void *dst, xhc_copy_data_t *region_data);
-int xhc_copy_from(xhc_peer_info_t *peer_info, void *dst,
+#define xhc_copy_expose_region(...) mca_coll_xhc_copy_expose_region(__VA_ARGS__)
+#define xhc_copy_region_post(...) mca_coll_xhc_copy_region_post(__VA_ARGS__)
+#define xhc_copy_from(...) mca_coll_xhc_copy_from(__VA_ARGS__)
+#define xhc_copy_close_region(...) mca_coll_xhc_copy_close_region(__VA_ARGS__)
+
+#define xhc_get_registration(...) mca_coll_xhc_get_registration(__VA_ARGS__)
+#define xhc_return_registration(...) mca_coll_xhc_return_registration(__VA_ARGS__)
+
+int mca_coll_xhc_lazy_init(mca_coll_xhc_module_t *module, ompi_communicator_t *comm);
+void mca_coll_xhc_fini(mca_coll_xhc_module_t *module);
+
+void *mca_coll_xhc_get_cico(xhc_peer_info_t *peer_info, int rank);
+
+int mca_coll_xhc_copy_expose_region(void *base, size_t len, xhc_copy_data_t **region_data);
+void mca_coll_xhc_copy_region_post(void *dst, xhc_copy_data_t *region_data);
+int mca_coll_xhc_copy_from(xhc_peer_info_t *peer_info, void *dst,
     void *src, size_t size, void *access_token);
-void xhc_copy_close_region(xhc_copy_data_t *region_data);
+void mca_coll_xhc_copy_close_region(xhc_copy_data_t *region_data);
 
-void *xhc_get_registration(xhc_peer_info_t *peer_info,
+void *mca_coll_xhc_get_registration(xhc_peer_info_t *peer_info,
     void *peer_vaddr, size_t size, xhc_reg_t **reg);
-void xhc_return_registration(xhc_reg_t *reg);
+void mca_coll_xhc_return_registration(xhc_reg_t *reg);
 
 // Primitives (respective file)
 // ----------------------------
@@ -432,6 +451,8 @@ int mca_coll_xhc_allreduce(const void *sbuf, void *rbuf,
 
 // Miscellaneous
 // -------------
+
+#define xhc_allreduce_internal(...) mca_coll_xhc_allreduce_internal(__VA_ARGS__)
 
 int mca_coll_xhc_allreduce_internal(const void *sbuf, void *rbuf, int count,
     ompi_datatype_t *datatype, ompi_op_t *op, ompi_communicator_t *ompi_comm,

@@ -517,7 +517,7 @@ static void destruct_xhc_loc_def_combination(void *data) {
     OPAL_LIST_DESTRUCT((opal_list_t *) data);
 }
 
-int xhc_component_parse_hierarchy(const char *val_str,
+int mca_coll_xhc_component_parse_hierarchy(const char *val_str,
         opal_list_t **level_defs_dst, int *nlevel_defs_dst) {
 
     /* The hierarchy is in a comma-separated list format. Each item in the
@@ -645,7 +645,7 @@ static int conv_chunk_size(char *str, void *result) {
     return (legal ? OMPI_SUCCESS : OMPI_ERR_BAD_PARAM);
 }
 
-int xhc_component_parse_chunk_sizes(const char *val_str,
+int mca_coll_xhc_component_parse_chunk_sizes(const char *val_str,
         size_t **chunks_dst, int *len_dst) {
 
     if(val_str == NULL) {

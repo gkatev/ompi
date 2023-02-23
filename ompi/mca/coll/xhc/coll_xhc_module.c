@@ -106,10 +106,6 @@ mca_coll_base_module_t *mca_coll_xhc_module_comm_query(ompi_communicator_t *comm
                 "coll:xhc:comm_query (%s/%s): All ranks not of the same arch; "
                 "disabling myself", ompi_comm_print_cid(comm), comm->c_name);
 
-            opal_show_help("help-coll-xhc.txt", "xhc-diff-arch",
-                true, OPAL_PROC_MY_HOSTNAME, opal_local_arch,
-                opal_get_proc_hostname(&proc->super), proc->super.proc_arch);
-
             return NULL;
         }
     }
@@ -127,14 +123,22 @@ mca_coll_base_module_t *mca_coll_xhc_module_comm_query(ompi_communicator_t *comm
     module->coll_barrier = mca_coll_xhc_barrier;
 
     if(mca_smsc == NULL) {
-        opal_show_help("help-coll-xhc.txt", "xhc-no-smsc", true);
+        opal_output_verbose(MCA_BASE_VERBOSE_COMPONENT,
+            ompi_coll_base_framework.framework_output,
+            "coll:xhc: Warning: No opal/smsc support found; "
+            "only barrier will be enabled");
+
         return module;
     }
 
     module->coll_bcast = mca_coll_xhc_bcast;
 
     if(!mca_smsc_base_has_feature(MCA_SMSC_FEATURE_CAN_MAP)) {
-        opal_show_help("help-coll-xhc.txt", "xhc-smsc-no-map", true);
+        opal_output_verbose(MCA_BASE_VERBOSE_COMPONENT,
+            ompi_coll_base_framework.framework_output,
+            "coll:xhc: Warning: opal/smsc module is not CAN_MAP capable; "
+            "(all)reduce will be disabled, bcast might see reduced performance");
+
         return module;
     }
 
@@ -363,7 +367,10 @@ static int xhc_module_create_hierarchy(mca_coll_xhc_module_t *module,
 
         if(is_virtual) {
             if(nvirt_hiers == OMPI_XHC_LOC_EXT_BITS) {
-                opal_show_help("help-coll-xhc.txt", "too-many-virt-hiers", true);
+                opal_output_verbose(MCA_BASE_VERBOSE_COMPONENT,
+                    ompi_coll_base_framework.framework_output,
+                    "coll:xhc: Error: Too many virtual hierarchies");
+
                 RETURN_WITH_ERROR(return_code, OMPI_ERR_NOT_SUPPORTED, end);
             }
 
@@ -624,7 +631,11 @@ static int xhc_module_sort_hierarchy(mca_coll_xhc_module_t *module,
     }
 
     if(common_locality == 0) {
-        opal_show_help("help-coll-xhc.txt", "xhc-no-common-locality", true);
+        opal_output_verbose(MCA_BASE_VERBOSE_COMPONENT,
+            ompi_coll_base_framework.framework_output,
+            "coll:xhc: Error: There is no locality common "
+            "to all ranks in the communicator");
+
         RETURN_WITH_ERROR(return_code, OMPI_ERR_NOT_SUPPORTED, end);
     }
 

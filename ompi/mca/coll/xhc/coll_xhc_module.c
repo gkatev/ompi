@@ -474,7 +474,7 @@ static int xhc_module_create_hierarchy(mca_coll_xhc_module_t *module,
         if(my_def->rank_list) {
             for(int i = 0; i < my_def->rank_list_len; i++) {
                 for(int r = my_def->rank_list[i].start_rank;
-                        r <= my_def->rank_list[i].end_rank; r++) {
+                        r <= my_def->rank_list[i].end_rank && r < comm_size; r++) {
                     if(r == rank) {
                         member_id = members;
                     }

@@ -56,15 +56,18 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
     ds_list = malloc(n_ranks * sizeof(opal_shmem_ds_t));
     candidate_list = malloc(n_ranks * sizeof(bool));
 
-    if(!comms || !ds_list || !candidate_list)
+    if(!comms || !ds_list || !candidate_list) {
         RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
+    }
 
-    if(mca_smsc_base_has_feature(MCA_SMSC_FEATURE_REQUIRE_REGISTRATION))
+    if(mca_smsc_base_has_feature(MCA_SMSC_FEATURE_REQUIRE_REGISTRATION)) {
         smsc_reg_size = mca_smsc_base_registration_data_size();
+    }
 
     // MPI_Reduce implementation is 'multi-sliced'!
-    if(data->colltype == XHC_REDUCE)
+    if(data->colltype == XHC_REDUCE) {
         n_slices = 2;
+    }
 
     // Initialize seq in a way that will have the first op use slice 0
     data->seq = n_slices - 1;
@@ -84,7 +87,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
 
         if(comm_count == comms_size) {
             void *tmp = realloc(comms, (comms_size *= 2) * sizeof(xhc_comm_t));
-            if(!tmp) RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
+            if(!tmp) {RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);}
             comms = tmp;
         }
 
@@ -109,7 +112,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
         };
 
         xc->slices = calloc(xc->n_slices, sizeof(xhc_sh_slice_t));
-        if(!xc->slices) RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
+        if(!xc->slices) {RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);}
 
         // ----
 
@@ -123,32 +126,37 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
         err = ompi_comm->c_coll->coll_allgather(&is_candidate, 1,
             MPI_C_BOOL, candidate_list, 1, MPI_C_BOOL,
             ompi_comm, ompi_comm->c_coll->coll_allgather_module);
-        if(err != OMPI_SUCCESS)
+        if(err != OMPI_SUCCESS) {
             RETURN_WITH_ERROR(return_code, err, comm_error);
+        }
 
         for(int r = 0; r < n_ranks; r++) {
             /* Only consider ranks that were leaders on the previous comm.
              * Don't get tempted to omit this check for the bottom comm; even
              * if this is the local's rank's bottom comm, it may not be for a
              * peer of his (e.g. with some non-symmetric hierarchies). */
-            if(candidate_list[r] == false)
+            if(candidate_list[r] == false) {
                 continue;
+            }
 
             // Non-local --> not part of the comm :/
-            if(!PEER_IS_LOCAL(peer_info, r, xc->locality))
+            if(!PEER_IS_LOCAL(peer_info, r, xc->locality)) {
                 continue;
+            }
 
             /* The member ID will mean slightly different things whether on
              * the bottom comm or on higher up ones. On the bottom comm,
              * each member ID corresponds to a single rank. On higher-up comms,
              * each member ID represents not a single process, but a whole
              * comm for the preceding level. */
-            if(r == rank || (comm_count > 0 && r == comms[comm_count - 1].owner_rank))
+            if(r == rank || (comm_count > 0 && r == comms[comm_count - 1].owner_rank)) {
                 xc->my_id = xc->size;
+            }
 
             // First rank to join the comm becomes the owner
-            if(xc->owner_rank == -1)
+            if(xc->owner_rank == -1) {
                 xc->owner_rank = r;
+            }
 
             xc->size++;
         }
@@ -171,8 +179,9 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
                 sizeof(opal_shmem_ds_t), MPI_BYTE, ds_list,
                 sizeof(opal_shmem_ds_t), MPI_BYTE, ompi_comm,
                 ompi_comm->c_coll->coll_allgather_module);
-            if(err != OMPI_SUCCESS)
+            if(err != OMPI_SUCCESS) {
                 RETURN_WITH_ERROR(return_code, err, comm_error);
+            }
 
             xhc_comms_destroy(xc, 1);
             continue;
@@ -183,20 +192,21 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
         /* Init comm stuff */
 
         xc->member_info = calloc(xc->size, sizeof(xhc_member_info_t));
-        if(xc->member_info == NULL)
+        if(xc->member_info == NULL) {
             RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, comm_error);
+        }
 
         xc->my_info = &xc->member_info[xc->my_id];
 
         if(data->colltype == XHC_REDUCE || data->colltype == XHC_ALLREDUCE) {
             xc->reduce_queue = OBJ_NEW(opal_list_t);
-            if(!xc->reduce_queue) RETURN_WITH_ERROR(return_code,
-                OMPI_ERR_OUT_OF_RESOURCE, comm_error);
+            if(!xc->reduce_queue) {RETURN_WITH_ERROR(return_code,
+                OMPI_ERR_OUT_OF_RESOURCE, comm_error);}
 
             for(int m = 0; m < xc->size - 1; m++) {
                 xhc_rq_item_t *item = OBJ_NEW(xhc_rq_item_t);
-                if(!item) RETURN_WITH_ERROR(return_code,
-                    OMPI_ERR_OUT_OF_RESOURCE, comm_error);
+                if(!item) {RETURN_WITH_ERROR(return_code,
+                    OMPI_ERR_OUT_OF_RESOURCE, comm_error);}
 
                 opal_list_append(xc->reduce_queue, (opal_list_item_t *) item);
             }
@@ -211,13 +221,15 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
             size_t ds_len = sizeof(xhc_comm_ctrl_t) + smsc_reg_size
                 + xc->size * sizeof(xhc_member_ctrl_t) * xc->n_slices;
 
-            if(data->colltype == XHC_REDUCE || data->colltype == XHC_ALLREDUCE)
+            if(data->colltype == XHC_REDUCE || data->colltype == XHC_ALLREDUCE) {
                 ds_len += xc->size * xc->cico_size * xc->n_slices;
+            }
 
             ds_base = xhc_shmem_create(&xc->comm_ds, ds_len,
                 ompi_comm, "ctrl", data->colltype, comm_count);
-            if(ds_base == NULL)
+            if(ds_base == NULL) {
                 RETURN_WITH_ERROR(return_code, OMPI_ERROR, comm_error);
+            }
 
             /* Manually 'touch' to assert allocation in local NUMA node
             * (assuming linux's default first-touch-alloc NUMA policy) */
@@ -262,16 +274,18 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
             sizeof(opal_shmem_ds_t), MPI_BYTE, ds_list,
             sizeof(opal_shmem_ds_t), MPI_BYTE, ompi_comm,
             ompi_comm->c_coll->coll_allgather_module);
-        if(err != OMPI_SUCCESS)
+        if(err != OMPI_SUCCESS) {
             RETURN_WITH_ERROR(return_code, err, comm_error);
+        }
 
         // Attach to owner's shared structs
         if(rank != xc->owner_rank) {
             xc->comm_ds = ds_list[xc->owner_rank];
 
             ds_base = xhc_shmem_attach(&xc->comm_ds);
-            if(ds_base == NULL)
+            if(ds_base == NULL) {
                 RETURN_WITH_ERROR(return_code, OMPI_ERROR, comm_error);
+            }
         }
 
         // ----
@@ -346,8 +360,9 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
     free(candidate_list);
     free(ds_list);
 
-    if(return_code != OMPI_SUCCESS)
+    if(return_code != OMPI_SUCCESS) {
         free(comms);
+    }
 
     return return_code;
 }
@@ -358,14 +373,16 @@ void mca_coll_xhc_comms_destroy(xhc_comm_t *comms, int comm_count) {
     for(int i = 0; i < comm_count; i++) {
         xhc_comm_t *xc = &comms[i];
 
-        if(xc->my_id != 0)
+        if(xc->my_id != 0) {
             is_owner = false;
+        }
 
         free(xc->slices);
         free(xc->member_info);
 
-        if(xc->reduce_queue)
+        if(xc->reduce_queue) {
             OPAL_LIST_RELEASE(xc->reduce_queue);
+        }
 
         if(xc->comm_ctrl) {
             if(is_owner) {

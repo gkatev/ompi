@@ -48,8 +48,9 @@ static void xhc_bcast_init_local(xhc_comm_t *comms, xhc_peer_info_t *peer_info,
         }
 
         // The root takes leadership precedence when local
-        if(PEER_IS_LOCAL(peer_info, root, xc->locality))
+        if(PEER_IS_LOCAL(peer_info, root, xc->locality)) {
             break;
+        }
 
         if(mca_coll_xhc_component.dynamic_leader == false) {
             /* If dynamic leadership is disabled, the member with
@@ -69,8 +70,9 @@ static void xhc_bcast_init_local(xhc_comm_t *comms, xhc_peer_info_t *peer_info,
         }
 
         // Non-leaders exit; they can't become leaders on higher levels
-        if(xc->is_leader == false)
+        if(xc->is_leader == false) {
             break;
+        }
     }
 
     /* The writes and the cmpxchg to comm_ctrl->leader_seq, are relaxed.
@@ -85,8 +87,9 @@ static void xhc_bcast_init_local(xhc_comm_t *comms, xhc_peer_info_t *peer_info,
 void mca_coll_xhc_bcast_notify(xhc_bcast_ctx_t *ctx,
         xhc_comm_t *xc, size_t bytes_ready) {
 
-    if(!(xc->op_state & COMM_PREV_FINI))
+    if(!(xc->op_state & COMM_PREV_FINI)) {
         return;
+    }
 
     if(xc->op_state & COMM_CTRL_INIT) {
         assert(ctx->method != XHC_COPY_IMM);
@@ -102,9 +105,10 @@ void mca_coll_xhc_bcast_notify(xhc_bcast_ctx_t *ctx,
                     || ctx->method == XHC_COPY_SMSC_NO_MAP) {
                 xc->comm_ctrl->data_vaddr = ctx->buf;
 
-                if(ctx->region_data != NULL)
+                if(ctx->region_data != NULL) {
                     xhc_copy_region_post((void *) xc->comm_ctrl->access_token,
                         ctx->region_data);
+                }
             }
         }
 
@@ -163,7 +167,7 @@ int mca_coll_xhc_bcast_init(void *buf, size_t count, ompi_datatype_t *datatype,
 
         int err = xhc_copy_expose_region(ctx->buf,
             ctx->bytes_total, &ctx->region_data);
-        if(err != 0) return OMPI_ERROR;
+        if(err != 0) {return OMPI_ERROR;}
     }
 
     // --
@@ -185,8 +189,9 @@ int mca_coll_xhc_bcast_start(xhc_bcast_ctx_t *ctx) {
     int err = OMPI_SUCCESS;
 
     for(xhc_comm_t *xc = ctx->comms->top; xc; xc = xc->down) {
-        if(!xc->is_leader || (xc->op_state & COMM_PREV_FINI))
+        if(!xc->is_leader || (xc->op_state & COMM_PREV_FINI)) {
             continue;
+        }
 
         if(!CHECK_FLAG(&xc->comm_ctrl->ack, ctx->seq - 1, 0)) {
             err = OMPI_ERR_WOULD_BLOCK;
@@ -205,8 +210,9 @@ int mca_coll_xhc_bcast_start(xhc_bcast_ctx_t *ctx) {
          * before polling bytes_ready; avoid writing the cache line and thus
          * triggering the cache coherency protocol twice. */
 
-        if(ctx->bytes_done > 0 || ctx->method == XHC_COPY_SMSC_MAP)
+        if(ctx->bytes_done > 0 || ctx->method == XHC_COPY_SMSC_MAP) {
             xhc_bcast_notify(ctx, xc, ctx->bytes_done);
+        }
     }
 
     return err;
@@ -232,14 +238,14 @@ int mca_coll_xhc_bcast_work(xhc_bcast_ctx_t *ctx) {
 
                 case XHC_COPY_CICO:
                     ctx->src_buffer = xhc_get_cico(peer_info, src_ctrl->leader_rank);
-                    if(ctx->src_buffer == NULL) return OMPI_ERR_OUT_OF_RESOURCE;
+                    if(ctx->src_buffer == NULL) {return OMPI_ERR_OUT_OF_RESOURCE;}
                     break;
 
                 case XHC_COPY_SMSC_MAP:
                     ctx->src_buffer = xhc_get_registration(
                         &ctx->module->peer_info[src_ctrl->leader_rank],
                         src_ctrl->data_vaddr, ctx->bytes_total, &ctx->reg);
-                    if(ctx->src_buffer == NULL) return OMPI_ERROR;
+                    if(ctx->src_buffer == NULL) {return OMPI_ERROR;}
                     break;
 
                 case XHC_COPY_SMSC_NO_MAP:
@@ -251,8 +257,9 @@ int mca_coll_xhc_bcast_work(xhc_bcast_ctx_t *ctx) {
             }
 
             src_comm->op_state |= COMM_CTRL_INIT;
-        } else
+        } else {
             return OPAL_ERR_WOULD_BLOCK;
+        }
 
         xhc_atomic_rmb();
     }
@@ -267,8 +274,9 @@ int mca_coll_xhc_bcast_work(xhc_bcast_ctx_t *ctx) {
         ctx->bytes_avail = xhc_atomic_load_size_t(
             &src_ctrl->bytes_ready) - ctx->bytes_done;
 
-        if(ctx->bytes_avail < copy_size)
+        if(ctx->bytes_avail < copy_size) {
             return OMPI_ERR_WOULD_BLOCK;
+        }
 
         xhc_atomic_rmb();
     }
@@ -281,8 +289,9 @@ int mca_coll_xhc_bcast_work(xhc_bcast_ctx_t *ctx) {
 
     /* Pipelined copy not necessary when
      * non-leader; copy all at once. */
-    if(!is_leader)
+    if(!is_leader) {
         copy_size = ctx->bytes_avail;
+    }
 
     switch(ctx->method) {
         case XHC_COPY_IMM:
@@ -297,7 +306,7 @@ int mca_coll_xhc_bcast_work(xhc_bcast_ctx_t *ctx) {
         case XHC_COPY_SMSC_NO_MAP:
             err = xhc_copy_from(&peer_info[src_ctrl->leader_rank], data_dst,
                 data_src, copy_size, (void *) src_ctrl->access_token);
-            if(err != 0) return OMPI_ERROR;
+            if(err != 0) {return OMPI_ERROR;}
 
             break;
 
@@ -313,11 +322,13 @@ int mca_coll_xhc_bcast_work(xhc_bcast_ctx_t *ctx) {
     xhc_atomic_wmb();
 
     // Notify any children
-    for(xhc_comm_t *xc = src_comm->down; xc; xc = xc->down)
+    for(xhc_comm_t *xc = src_comm->down; xc; xc = xc->down) {
         xhc_bcast_notify(ctx, xc, ctx->bytes_done);
+    }
 
-    if(ctx->method == XHC_COPY_CICO && is_leader)
+    if(ctx->method == XHC_COPY_CICO && is_leader) {
         xhc_memcpy(data_dst, cico_dst, copy_size);
+    }
 
     return OMPI_SUCCESS;
 }
@@ -328,14 +339,16 @@ void mca_coll_xhc_bcast_ack(xhc_bcast_ctx_t *ctx) {
     for(xhc_comm_t *xc = ctx->comms; xc; xc = xc->up) {
         xc->my_ctrl->ack = ctx->seq;
 
-        if(!xc->is_leader)
+        if(!xc->is_leader) {
             break;
+        }
     }
 
     // Gather members' acks and set comm ack
     for(xhc_comm_t *xc = ctx->comms; xc; xc = xc->up) {
-        if(!xc->is_leader)
+        if(!xc->is_leader) {
             break;
+        }
 
         /* We are about to write this after gathering
          * the members' acks, let's prefetch it now! */
@@ -343,8 +356,9 @@ void mca_coll_xhc_bcast_ack(xhc_bcast_ctx_t *ctx) {
             sizeof(xc->comm_ctrl->ack), 1);
 
         for(int m = 0; m < xc->size; m++) {
-            if(m == xc->my_id)
+            if(m == xc->my_id) {
                 continue;
+            }
 
             WAIT_FLAG(&xc->member_ctrl[m].ack, ctx->seq, 0);
         }
@@ -354,19 +368,22 @@ void mca_coll_xhc_bcast_ack(xhc_bcast_ctx_t *ctx) {
 }
 
 void mca_coll_xhc_bcast_fini(xhc_bcast_ctx_t *ctx) {
-    if(ctx->reg)
+    if(ctx->reg) {
         xhc_return_registration(ctx->reg);
+    }
 
-    if(ctx->region_data)
+    if(ctx->region_data) {
         xhc_copy_close_region(ctx->region_data);
+    }
 
     /* The operation is done, all children have copied from the leader's CICO
      * buffer, and thus the cache lines comprising it are in various caches,
      * probably in shared state. Do an RFO-prefetch, to claim them back in the
      * local cache in exclusive state, to speed up writing to the CICO buffer
      * in the next op. Specify prefetch to L2, to try to avoid cache pollution */
-    if(ctx->method == XHC_COPY_CICO && ctx->comms[0].is_leader)
+    if(ctx->method == XHC_COPY_CICO && ctx->comms[0].is_leader) {
         xhc_prefetchw(ctx->self_cico, ctx->bytes_total, 2);
+    }
 }
 
 // ------------------------------------------------
@@ -401,31 +418,35 @@ int mca_coll_xhc_bcast(void *buf, size_t count, ompi_datatype_t *datatype, int r
 
     if(!module->op_data[XHC_BCAST].init) {
         err = xhc_init_op(module, ompi_comm, XHC_BCAST);
-        if(err != OMPI_SUCCESS) goto _fallback_permanent;
+        if(err != OMPI_SUCCESS) {goto _fallback_permanent;}
     }
 
     err = xhc_bcast_init(buf, count, datatype,
         root, ompi_comm, module, &ctx);
-    if(err != OMPI_SUCCESS) return err;
+    if(err != OMPI_SUCCESS) {return err;}
 
     /* Safe to alter the CICO buffer without checking any flags,
      * because this is this rank's personal buffer. In any past
      * ops where others copied from it, the rank has gathered
      * acks that these copies have completed. */
-    if(ctx.rank == root && ctx.method == XHC_COPY_CICO)
+    if(ctx.rank == root && ctx.method == XHC_COPY_CICO) {
         xhc_memcpy(ctx.self_cico, ctx.buf, ctx.bytes_total);
+    }
 
-    if(ctx.rank == root)
+    if(ctx.rank == root) {
         ctx.bytes_done = ctx.bytes_total;
+    }
 
-    while((err = xhc_bcast_start(&ctx)) != OMPI_SUCCESS)
-        if(err != OMPI_ERR_WOULD_BLOCK) return err;
+    while((err = xhc_bcast_start(&ctx)) != OMPI_SUCCESS) {
+        if(err != OMPI_ERR_WOULD_BLOCK) {return err;}
+    }
 
     while(ctx.bytes_done < ctx.bytes_total) {
         err = xhc_bcast_work(&ctx);
 
-        if(err != OMPI_SUCCESS && err != OMPI_ERR_WOULD_BLOCK)
+        if(err != OMPI_SUCCESS && err != OMPI_ERR_WOULD_BLOCK) {
             return err;
+        }
     }
 
     xhc_bcast_ack(&ctx);

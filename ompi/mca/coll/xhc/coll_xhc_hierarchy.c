@@ -48,14 +48,14 @@ int mca_coll_xhc_hierarchy_make(xhc_module_t *module,
 
     err = xhc_component_parse_hierarchy(hierarchy_string,
         &level_defs, &nlevel_defs);
-    if(err != OMPI_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
 
     err = xhc_hierarchy_create(module, comm, level_defs,
         nlevel_defs, &hierarchy, &hierarchy_len);
-    if(err != OMPI_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
 
     err = xhc_hierarchy_sort(module, comm, &hierarchy, &hierarchy_len);
-    if(err != OMPI_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
 
     // ---
 
@@ -64,12 +64,14 @@ int mca_coll_xhc_hierarchy_make(xhc_module_t *module,
 
     end:
 
-    for(int i = 0; i < nlevel_defs; i++)
+    for(int i = 0; i < nlevel_defs; i++) {
         OPAL_LIST_DESTRUCT(&level_defs[i]);
+    }
     free(level_defs);
 
-    if(err != OMPI_SUCCESS)
+    if(err != OMPI_SUCCESS) {
         free(hierarchy);
+    }
 
     return return_code;
 }
@@ -102,8 +104,9 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
     rank_list = malloc(comm_size * sizeof(int));
     loc_list = malloc(comm_size * sizeof(opal_hwloc_locality_t));
 
-    if(!hierarchy || !rank_list || !loc_list)
+    if(!hierarchy || !rank_list || !loc_list) {
         RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
+    }
 
     switch(sizeof(opal_hwloc_locality_t)) {
         case 1: hwloc_locality_type = MPI_UINT8_T; break;
@@ -132,8 +135,9 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
 
             locality = 1 << (XHC_LOC_EXT_START + nvirt_hiers);
             nvirt_hiers++;
-        } else
+        } else {
             locality = def_0->named_loc;
+        }
 
         hierarchy[h] = locality;
         def_0 = NULL;
@@ -155,7 +159,7 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
                 }
 
                 opal_list_remove_item(defs, (opal_list_item_t *) def);
-                if(def != my_def) OBJ_RELEASE(def);
+                if(def != my_def) {OBJ_RELEASE(def);}
             }
         }
 
@@ -185,15 +189,17 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
             err = comm->c_coll->coll_allreduce(&ticket, &chosen, 1,
                 MPI_INT, (dir_fwd ? MPI_MIN : MPI_MAX), comm,
                 comm->c_coll->coll_allreduce_module);
-            if(err != OMPI_SUCCESS)
+            if(err != OMPI_SUCCESS) {
                 RETURN_WITH_ERROR(return_code, err, end);
+            }
 
             if(chosen >= 0 && chosen < comm_size
-                    && PEER_IS_LOCAL(peer_info, chosen, def->named_loc))
+                    && PEER_IS_LOCAL(peer_info, chosen, def->named_loc)) {
                 my_def = def;
+            }
 
             opal_list_remove_item(defs, (opal_list_item_t *) def);
-            if(def != my_def) OBJ_RELEASE(def);
+            if(def != my_def) {OBJ_RELEASE(def);}
         }
 
         if(opal_list_get_size(defs) > 0 && !my_def) {
@@ -207,11 +213,13 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
         err = comm->c_coll->coll_allgather(&follow_loc, 1,
             hwloc_locality_type, loc_list, 1, hwloc_locality_type,
             comm, comm->c_coll->coll_allgather_module);
-        if(err != OMPI_SUCCESS)
+        if(err != OMPI_SUCCESS) {
             RETURN_WITH_ERROR(return_code, err, end);
+        }
 
-        if(my_def == NULL)
+        if(my_def == NULL) {
             continue;
+        }
 
         int my_id = -1;
         int members = 0;
@@ -221,8 +229,9 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
             for(int i = 0; i < my_def->rank_list_len; i++) {
                 for(int r = my_def->rank_list[i].start_rank;
                         r <= my_def->rank_list[i].end_rank && r < comm_size; r++) {
-                    if(r == rank)
+                    if(r == rank) {
                         my_id = members;
+                    }
 
                     peer_info[r].locality |= locality;
                     rank_list[members++] = r;
@@ -232,14 +241,17 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
             /* We might have a named locality instead of a rank list, but if
              * we still needed to create a virtual one, we need to apply it. */
             for(int r = 0; r < comm_size; r++) {
-                if(loc_list[r] != my_def->named_loc)
+                if(loc_list[r] != my_def->named_loc) {
                     continue;
+                }
 
-                if(!PEER_IS_LOCAL(peer_info, r, my_def->named_loc))
+                if(!PEER_IS_LOCAL(peer_info, r, my_def->named_loc)) {
                     continue;
+                }
 
-                if(r == rank)
+                if(r == rank) {
                     my_id = members;
+                }
 
                 peer_info[r].locality |= locality;
                 rank_list[members++] = r;
@@ -255,7 +267,7 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
             for(int m = 0, next_border = 0; m < members; m++) {
                 if(m == next_border) {
                     next_border += piece_size + (leftover > 0 ? 1 : 0);
-                    if(leftover > 0) leftover--;
+                    if(leftover > 0) {leftover--;}
 
                     if(my_id >= m && my_id < next_border) {
                         m = next_border - 1;
@@ -291,8 +303,9 @@ end:
     free(rank_list);
     free(loc_list);
 
-    if(return_code != OMPI_SUCCESS)
+    if(return_code != OMPI_SUCCESS) {
         free(hierarchy);
+    }
 
     return return_code;
 }
@@ -315,8 +328,9 @@ static int xhc_hierarchy_sort(mca_coll_xhc_module_t *module,
     new_hier = malloc((hier_len + 1) * sizeof(xhc_loc_t));
     hier_done = calloc(hier_len, sizeof(bool));
 
-    if(new_hier == NULL || hier_done == NULL)
+    if(new_hier == NULL || hier_done == NULL) {
         RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
+    }
 
     bool has_virtual = false;
     for(int i = 0; i < hier_len; i++) {
@@ -339,14 +353,16 @@ static int xhc_hierarchy_sort(mca_coll_xhc_module_t *module,
             int max_matches_hier_idx = -1;
 
             for(int i = 0; i < hier_len; i++) {
-                if(hier_done[i])
+                if(hier_done[i]) {
                     continue;
+                }
 
                 int matches = 0;
 
                 for(int r = 0; r < comm_size; r++) {
-                    if(PEER_IS_LOCAL(peer_info, r, old_hier[i]))
+                    if(PEER_IS_LOCAL(peer_info, r, old_hier[i])) {
                         matches++;
+                    }
                 }
 
                 if(matches > max_matches_count) {
@@ -396,8 +412,9 @@ end:
 
     free(hier_done);
 
-    if(return_code != OMPI_SUCCESS)
+    if(return_code != OMPI_SUCCESS) {
         free(new_hier);
+    }
 
     return return_code;
 }

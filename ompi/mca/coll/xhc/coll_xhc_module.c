@@ -114,8 +114,9 @@ static void mca_coll_xhc_module_destruct(mca_coll_xhc_module_t *module) {
      * deallocated here. The stuff that's allocated lazily inside/under
      * xhc_lazy_init and xhc_init_op, is deallocated inside xhc_fini. */
 
-    if(module->init)
+    if(module->init) {
         xhc_fini(module);
+	}
 
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         free(module->op_config[t].hierarchy_string);
@@ -131,8 +132,9 @@ static void mca_coll_xhc_module_destruct(mca_coll_xhc_module_t *module) {
 mca_coll_base_module_t *mca_coll_xhc_module_comm_query(ompi_communicator_t *comm,
         int *priority) {
 
-    if((*priority = mca_coll_xhc_component.priority) < 0)
+    if((*priority = mca_coll_xhc_component.priority) < 0) {
         return NULL;
+	}
 
     int comm_size = ompi_comm_size(comm);
 
@@ -163,8 +165,9 @@ mca_coll_base_module_t *mca_coll_xhc_module_comm_query(ompi_communicator_t *comm
 
     mca_coll_xhc_module_t *module = OBJ_NEW(mca_coll_xhc_module_t);
 
-    if(module == NULL)
+    if(module == NULL) {
         return NULL;
+	}
 
     module->zcopy_support = (mca_smsc != NULL);
     module->zcopy_map_support = mca_smsc_base_has_feature(MCA_SMSC_FEATURE_CAN_MAP);
@@ -204,8 +207,9 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *ompi_module,
      * (e.g. checking cico and single-copy support at the beginning of ops). */
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         int err = xhc_read_op_config(module, comm, t);
-        if(err != OMPI_SUCCESS)
+        if(err != OMPI_SUCCESS) {
             return err;
+		}
     }
 
     // ---
@@ -213,8 +217,9 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *ompi_module,
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         /* Don't want to save a fallback for
          * any op that we won't support */
-        if(MODULE_COLL_FN(module, t) == NULL)
+        if(MODULE_COLL_FN(module, t) == NULL) {
             continue;
+		}
 
         void (*fallback_fn)(void), *fallback_module;
         GET_COLL_API(comm, t, &fallback_fn, &fallback_module);
@@ -237,7 +242,7 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *ompi_module,
      * and we know xhc_module_enable can no longer fail. */
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         void (*fn)(void) = MODULE_COLL_FN(module, t);
-        if(fn) INSTALL_COLL_API(comm, t, fn, module);
+        if(fn) {INSTALL_COLL_API(comm, t, fn, module);}
     }
 
     // ---
@@ -260,17 +265,20 @@ void mca_coll_xhc_module_set_coll_fns(ompi_communicator_t *comm,
     xhc_coll_fns_t saved = {0};
 
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
-        if(!new_fns->coll_fn[t])
+        if(!new_fns->coll_fn[t]) {
             continue;
+		}
 
-        if(saved_fns_dst)
+        if(saved_fns_dst) {
             GET_COLL_API(comm, t, &saved.coll_fn[t],
-                &saved.coll_module[t]);
+				&saved.coll_module[t]);
+		}
 
         INSTALL_COLL_API(comm, t, new_fns->coll_fn[t],
             new_fns->coll_module[t]);
     }
 
-    if(saved_fns_dst)
+    if(saved_fns_dst) {
         *saved_fns_dst = saved;
+	}
 }

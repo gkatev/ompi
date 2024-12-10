@@ -38,10 +38,10 @@
 #define RETURN_WITH_ERROR(var, err, label) do {(var) = (err); goto label;} \
     while(0)
 
-#define OBJ_RELEASE_IF_NOT_NULL(obj) do {if((obj) != NULL) OBJ_RELEASE(obj);} while(0)
+#define OBJ_RELEASE_IF_NOT_NULL(obj) do {if((obj) != NULL) {OBJ_RELEASE(obj);}} while(0)
 
 #define REALLOC(p, s, t) do {void *_tmp = realloc(p, (s)*sizeof(t)); \
-    if(_tmp) (p) = _tmp;} while(0)
+    if(_tmp) {(p) = _tmp;}} while(0)
 
 #define PEER_IS_LOCAL(peer_info, rank, loc) \
     (((peer_info)[(rank)].locality & (loc)) == (loc))
@@ -699,14 +699,16 @@ static inline void WAIT_FLAG(volatile xf_sig_t *flag,
             if(CHECK_FLAG(&f, thresh, win)) {
                 ready = true;
                 break;
-            } else if(CHECK_FLAG(&f, thresh, 1000))
+            } else if(CHECK_FLAG(&f, thresh, 1000)) {
                 printf("Debug: Flag check with window %d failed, "
                     "but succeeded with window 1000. flag = %d, "
-                    "thresh = %d\n", win, f, thresh); */
+                    "thresh = %d\n", win, f, thresh);
+            } */
         }
 
-        if(!ready)
+        if(!ready) {
             opal_progress();
+        }
     } while(!ready);
 }
 

@@ -34,8 +34,9 @@ static void xhc_barrier_leader(xhc_comm_t *comms, int comm_count,
         }
 
         // The root takes leadership precedence when local
-        if(PEER_IS_LOCAL(peer_info, root, xc->locality))
+        if(PEER_IS_LOCAL(peer_info, root, xc->locality)) {
             break;
+        }
 
         // The member with the lowest ID (ie. the owner) becomes the leader
         if(xc->my_id == 0) {
@@ -44,8 +45,9 @@ static void xhc_barrier_leader(xhc_comm_t *comms, int comm_count,
         }
 
         // Non-leaders exit; they can't become leaders on higher levels
-        if(xc->is_leader == false)
+        if(xc->is_leader == false) {
             break;
+        }
     }
 }
 
@@ -69,7 +71,7 @@ int mca_coll_xhc_barrier(ompi_communicator_t *ompi_comm,
 
     if(!module->op_data[XHC_BARRIER].init) {
         int err = xhc_init_op(module, ompi_comm, XHC_BARRIER);
-        if(err != OMPI_SUCCESS) goto _fallback_permanent;
+        if(err != OMPI_SUCCESS) {goto _fallback_permanent;}
     }
 
     xhc_peer_info_t *peer_info = module->peer_info;
@@ -89,12 +91,14 @@ int mca_coll_xhc_barrier(ompi_communicator_t *ompi_comm,
     for(xhc_comm_t *xc = comms; xc; xc = xc->up) {
         xc->my_ctrl->seq = seq;
 
-        if(!xc->is_leader)
+        if(!xc->is_leader) {
             break;
+        }
 
         for(int m = 0; m < xc->size; m++) {
-            if(m == xc->my_id)
+            if(m == xc->my_id) {
                 continue;
+            }
 
             /* Poll comm members and wait for them to join the barrier.
              * No need for windowed comparison here; Ranks won't exit the
@@ -113,8 +117,9 @@ int mca_coll_xhc_barrier(ompi_communicator_t *ompi_comm,
 
     // 3. Trigger ACK Wave
     for(xhc_comm_t *xc = comms; xc; xc = xc->up) {
-        if(!xc->is_leader)
+        if(!xc->is_leader) {
             break;
+        }
 
         xc->comm_ctrl->ack = seq;
     }

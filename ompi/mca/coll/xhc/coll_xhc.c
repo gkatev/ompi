@@ -51,15 +51,16 @@ int mca_coll_xhc_lazy_init(xhc_module_t *module, ompi_communicator_t *comm) {
 
     errno = 0;
 
-    if(module->init)
+    if(module->init) {
         return OMPI_SUCCESS;
-    else if(module->error)
+    } else if(module->error) {
         return OMPI_ERROR;
+    }
 
     // ---
 
     peer_info = calloc(comm_size, sizeof(xhc_peer_info_t));
-    if(!peer_info) RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
+    if(!peer_info) {RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);}
 
     for(int r = 0; r < comm_size; r++) {
         peer_info[r].proc = ompi_comm_peer_lookup(comm, r);
@@ -72,7 +73,7 @@ int mca_coll_xhc_lazy_init(xhc_module_t *module, ompi_communicator_t *comm) {
 
     OBJ_CONSTRUCT(&module->hierarchy_cache, opal_hash_table_t);
     err = opal_hash_table_init(&module->hierarchy_cache, XHC_COLLCOUNT);
-    if(err != OPAL_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+    if(err != OPAL_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
 
     // ---
 
@@ -116,11 +117,12 @@ int mca_coll_xhc_init_op(xhc_module_t *module,
 
     if(!module->init && !module->error) {
         err = xhc_lazy_init(module, comm);
-        if(err != OMPI_SUCCESS) return err;
+        if(err != OMPI_SUCCESS) {return err;}
     }
 
-    if(module->op_data[colltype].init)
+    if(module->op_data[colltype].init) {
         return OMPI_SUCCESS;
+    }
 
     // ---
 
@@ -132,7 +134,7 @@ int mca_coll_xhc_init_op(xhc_module_t *module,
 
     if(colltype == XHC_BCAST) {
         err = xhc_alloc_bcast_cico(module, comm);
-        if(err != OMPI_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+        if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
     }
 
     // ---
@@ -159,7 +161,7 @@ int mca_coll_xhc_init_op(xhc_module_t *module,
 
         err = xhc_hierarchy_make(module, comm, config->hierarchy_string,
             &config->hierarchy, &config->hierarchy_len);
-        if(err != OMPI_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+        if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
 
         err = opal_hash_table_set_value_ptr(&module->hierarchy_cache,
             config->hierarchy_string, strlen(config->hierarchy_string),
@@ -176,7 +178,7 @@ int mca_coll_xhc_init_op(xhc_module_t *module,
     // ---
 
     err = xhc_comms_make(comm, module, config, data);
-    if(err != OMPI_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
 
     data->init = true;
 
@@ -227,18 +229,19 @@ static int xhc_alloc_bcast_cico(xhc_module_t *module, ompi_communicator_t *comm)
 
     size_t cico_size = module->op_config[XHC_BCAST].cico_max;
 
-    if(cico_size == 0)
+    if(cico_size == 0) {
         return OMPI_SUCCESS;
+    }
 
     xhc_module_set_coll_fns(comm, &module->prev_colls, &xhc_fns);
 
     // --
 
     ds_list = malloc(comm_size * sizeof(opal_shmem_ds_t));
-    if(!ds_list) return OMPI_ERR_OUT_OF_RESOURCE;
+    if(!ds_list) {return OMPI_ERR_OUT_OF_RESOURCE;}
 
     cico_buffer = xhc_shmem_create(&cico_ds, cico_size, comm, "cico", 0, 0);
-    if(!cico_buffer) RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
+    if(!cico_buffer) {RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);}
 
     /* Manually "touch" to assert allocation in local NUMA node
      * (assuming linux's default first-touch-alloc policy). */
@@ -247,13 +250,13 @@ static int xhc_alloc_bcast_cico(xhc_module_t *module, ompi_communicator_t *comm)
     err = comm->c_coll->coll_allgather(&cico_ds, sizeof(opal_shmem_ds_t),
         MPI_BYTE, ds_list, sizeof(opal_shmem_ds_t), MPI_BYTE, comm,
         comm->c_coll->coll_allgather_module);
-    if(err != OMPI_SUCCESS) RETURN_WITH_ERROR(return_code, err, end);
+    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
 
     module->peer_info[rank].cico_ds = cico_ds;
     module->peer_info[rank].cico_buffer = cico_buffer;
 
     for(int r = 0; r < comm_size; r++) {
-        if(r == rank) continue;
+        if(r == rank) {continue;}
         module->peer_info[r].cico_ds = ds_list[r];
     }
 
@@ -277,13 +280,15 @@ static int xhc_alloc_bcast_cico(xhc_module_t *module, ompi_communicator_t *comm)
 void mca_coll_xhc_fini(mca_coll_xhc_module_t *module) {
     if(module->peer_info) {
         for(int r = 0; r < module->comm_size; r++) {
-            if(module->peer_info[r].smsc_ep)
+            if(module->peer_info[r].smsc_ep) {
                 MCA_SMSC_CALL(return_endpoint, module->peer_info[r].smsc_ep);
+            }
 
             if(module->peer_info[r].cico_buffer) {
                 // OMPI #11123
-                /* if(r == module->rank)
-                    opal_shmem_unlink(&module->peer_info[r].cico_ds); */
+                /* if(r == module->rank) {
+                    opal_shmem_unlink(&module->peer_info[r].cico_ds);
+                } */
 
                 opal_shmem_segment_detach(&module->peer_info[r].cico_ds);
             }
@@ -345,7 +350,7 @@ int mca_coll_xhc_read_op_config(xhc_module_t *module,
             // Op-specific info key
             err = opal_asprintf(&key, "ompi_comm_coll_xhc_%s_%s",
                 xhc_colltype_to_str(colltype), param[p]);
-            if(err < 0) return OMPI_ERR_OUT_OF_RESOURCE;
+            if(err < 0) {return OMPI_ERR_OUT_OF_RESOURCE;}
 
             opal_info_get(comm->super.s_info,
                 key, &info_val, &info_flag);
@@ -357,14 +362,15 @@ int mca_coll_xhc_read_op_config(xhc_module_t *module,
                 // Non-specific info key
                 err = opal_asprintf(&key, "ompi_comm_coll_xhc_%s",
                     param[p]);
-                if(err < 0) return OMPI_ERR_OUT_OF_RESOURCE;
+                if(err < 0) {return OMPI_ERR_OUT_OF_RESOURCE;}
 
                 opal_info_get(comm->super.s_info, key,
                     &info_val, &info_flag);
                 free(key);
 
-                if(info_flag)
+                if(info_flag) {
                     config_source = XHC_CONFIG_SOURCE_INFO_GLOBAL;
+                }
             }
         }
 
@@ -373,7 +379,7 @@ int mca_coll_xhc_read_op_config(xhc_module_t *module,
 
             err = mca_base_var_get(mca_base_var_find("ompi",
                 "coll", "xhc", param[p]), &var_global);
-            if(err != OPAL_SUCCESS) return err;
+            if(err != OPAL_SUCCESS) {return err;}
 
             config_source = (var_global->mbv_source != MCA_BASE_VAR_SOURCE_DEFAULT
                 ? XHC_CONFIG_SOURCE_MCA_GLOBAL : XHC_CONFIG_SOURCE_MCA_OP);
@@ -384,11 +390,13 @@ int mca_coll_xhc_read_op_config(xhc_module_t *module,
                 config->hierarchy_string = strdup(info_flag ?
                     info_val->string : op_mca.hierarchy);
 
-                if(info_flag)
+                if(info_flag) {
                     OBJ_RELEASE(info_val);
+                }
 
-                if(!config->hierarchy_string)
+                if(!config->hierarchy_string) {
                     return OMPI_ERR_OUT_OF_RESOURCE;
+                }
 
                 config->hierarchy_source = config_source;
 
@@ -400,17 +408,20 @@ int mca_coll_xhc_read_op_config(xhc_module_t *module,
                 config->chunk_string = strdup(info_flag ?
                     info_val->string : op_mca.chunk_size);
 
-                if(info_flag)
+                if(info_flag) {
                     OBJ_RELEASE(info_val);
+                }
 
-                if(!config->chunk_string)
+                if(!config->chunk_string) {
                     return OMPI_ERR_OUT_OF_RESOURCE;
+                }
 
                 err = xhc_component_parse_chunk_sizes(config->chunk_string,
                     &config->chunks, &config->chunks_len);
 
-                if(err != OMPI_SUCCESS)
+                if(err != OMPI_SUCCESS) {
                     return err;
+                }
 
                 config->chunk_source = config_source;
 
@@ -421,10 +432,12 @@ int mca_coll_xhc_read_op_config(xhc_module_t *module,
                         info_val->string, &config->cico_max);
                     OBJ_RELEASE(info_val);
 
-                    if(err != OMPI_SUCCESS)
+                    if(err != OMPI_SUCCESS) {
                         return err;
-                } else
+                    }
+                } else {
                     config->cico_max = op_mca.cico_max;
+                }
 
                 config->cico_max_source = config_source;
 
@@ -451,7 +464,7 @@ int mca_coll_xhc_read_op_config(xhc_module_t *module,
                 int err = opal_asprintf(&tmp, "%s%s%zu", str,
                     (i > 0 ? "," : ""), config->chunks[i]);
                 free(str); str = tmp;
-                if(err < 0) return OMPI_ERR_OUT_OF_RESOURCE;
+                if(err < 0) {return OMPI_ERR_OUT_OF_RESOURCE;}
             }
 
             free(config->chunk_string);
@@ -499,7 +512,7 @@ static int xhc_print_config_info(xhc_module_t *module, ompi_communicator_t *comm
 
     err = opal_asprintf(&un_min_str, " (min %zu bytes)",
         mca_coll_xhc_component.uniform_chunks_min);
-    if(err < 0) return OMPI_ERR_OUT_OF_RESOURCE;
+    if(err < 0) {return OMPI_ERR_OUT_OF_RESOURCE;}
 
     printf("------------------------------------------------\n"
         "OMPI coll/xhc @ %s, priority %d\n"
@@ -554,22 +567,25 @@ static int xhc_print_op_info(xhc_module_t *module,
         int err;
 
         err = opal_asprintf(&memb_list, "%d", comms[i].owner_rank);
-        if(err < 0) return OMPI_ERR_OUT_OF_RESOURCE;
+        if(err < 0) {return OMPI_ERR_OUT_OF_RESOURCE;}
 
         for(int m = 1; m < comms[i].size; m++) {
             if(m == comms[i].my_id) {
-                if(i == 0 || comms[i-1].owner_rank == rank)
+                if(i == 0 || comms[i-1].owner_rank == rank) {
                     err = opal_asprintf(&tmp, "%s %d", memb_list, rank);
-                else
+                } else {
                     err = opal_asprintf(&tmp, "%s _", memb_list);
-            } else
+                }
+            } else {
                 err = opal_asprintf(&tmp, "%s x", memb_list);
+            }
 
             free(memb_list);
             memb_list = tmp;
 
-            if(err < 0)
+            if(err < 0) {
                 return OMPI_ERR_OUT_OF_RESOURCE;
+            }
         }
 
         if(colltype == XHC_BARRIER) {
@@ -602,7 +618,7 @@ static int xhc_print_op_hierarchy_dot(xhc_module_t *module,
 
     if(module->rank == 0) {
         src_rank = malloc(module->comm_size * sizeof(int));
-        if(!src_rank) return OMPI_ERR_OUT_OF_RESOURCE;
+        if(!src_rank) {return OMPI_ERR_OUT_OF_RESOURCE;}
     }
 
     for(xhc_comm_t *xc = comms; xc; xc = xc->up) {
@@ -621,8 +637,9 @@ static int xhc_print_op_hierarchy_dot(xhc_module_t *module,
     xhc_module_set_coll_fns(comm, &xhc_fns, NULL);
 
     if(err != OMPI_SUCCESS) {
-        if(module->rank == 0)
+        if(module->rank == 0) {
             free(src_rank);
+        }
         return err;
     }
 
@@ -642,8 +659,9 @@ static int xhc_print_op_hierarchy_dot(xhc_module_t *module,
 
         fprintf(outfile, "digraph xhc_%s_hierarchy {\n", xhc_colltype_to_str(colltype));
 
-        for(int r = 1; r < module->comm_size; r++)
+        for(int r = 1; r < module->comm_size; r++) {
             fprintf(outfile, "\t%d -> %d [dir=%s];\n", src_rank[r], r, dir);
+        }
 
         fprintf(outfile, "}\n");
 
@@ -669,8 +687,9 @@ void *mca_coll_xhc_shmem_create(opal_shmem_ds_t *seg_ds, size_t size,
         ompi_comm_rank(MPI_COMM_WORLD), ompi_comm_get_local_cid(ompi_comm),
         name, id1, id2);
 
-    if(err < 0)
+    if(err < 0) {
         return NULL;
+    }
 
     // Not 100% sure what this does!, copied from btl/sm
     opal_pmix_register_cleanup(shmem_file, false, false, false);
@@ -689,8 +708,9 @@ void *mca_coll_xhc_shmem_create(opal_shmem_ds_t *seg_ds, size_t size,
 
     void *addr = xhc_shmem_attach(seg_ds);
 
-    if(addr == NULL)
+    if(addr == NULL) {
         opal_shmem_unlink(seg_ds);
+    }
 
     return addr;
 }
@@ -710,8 +730,9 @@ void *mca_coll_xhc_shmem_attach(opal_shmem_ds_t *seg_ds) {
 // ------------------------------------------------
 
 void *mca_coll_xhc_get_cico(xhc_peer_info_t *peer_info, int rank) {
-    if(peer_info[rank].cico_buffer == NULL)
+    if(peer_info[rank].cico_buffer == NULL) {
         peer_info[rank].cico_buffer = xhc_shmem_attach(&peer_info[rank].cico_ds);
+    }
 
     return peer_info[rank].cico_buffer;
 }
@@ -761,8 +782,9 @@ int mca_coll_xhc_copy_from(xhc_peer_info_t *peer_info,
 
     mca_smsc_endpoint_t *smsc_ep = xhc_smsc_ep(peer_info);
 
-    if(smsc_ep == NULL)
+    if(smsc_ep == NULL) {
         return -1;
+    }
 
     int status = MCA_SMSC_CALL(copy_from, smsc_ep,
         dst, src, size, access_token);
@@ -771,8 +793,9 @@ int mca_coll_xhc_copy_from(xhc_peer_info_t *peer_info,
 }
 
 void mca_coll_xhc_copy_close_region(xhc_copy_data_t *region_data) {
-    if(mca_smsc_base_has_feature(MCA_SMSC_FEATURE_REQUIRE_REGISTRATION))
+    if(mca_smsc_base_has_feature(MCA_SMSC_FEATURE_REQUIRE_REGISTRATION)) {
         MCA_SMSC_CALL(deregister_region, region_data);
+    }
 }
 
 void *mca_coll_xhc_get_registration(xhc_peer_info_t *peer_info,
@@ -780,16 +803,18 @@ void *mca_coll_xhc_get_registration(xhc_peer_info_t *peer_info,
 
     mca_smsc_endpoint_t *smsc_ep = xhc_smsc_ep(peer_info);
 
-    if(smsc_ep == NULL)
+    if(smsc_ep == NULL) {
         return NULL;
+    }
 
     void *local_ptr;
 
     *reg = MCA_SMSC_CALL(map_peer_region, smsc_ep,
         MCA_RCACHE_FLAGS_PERSIST, peer_vaddr, size, &local_ptr);
 
-    if(*reg == NULL)
+    if(*reg == NULL) {
         return NULL;
+    }
 
     return local_ptr;
 }

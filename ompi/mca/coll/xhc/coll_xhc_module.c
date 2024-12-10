@@ -116,7 +116,7 @@ static void mca_coll_xhc_module_destruct(mca_coll_xhc_module_t *module) {
 
     if(module->init) {
         xhc_fini(module);
-	}
+    }
 
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         free(module->op_config[t].hierarchy_string);
@@ -167,7 +167,7 @@ mca_coll_base_module_t *mca_coll_xhc_module_comm_query(ompi_communicator_t *comm
 
     if(module == NULL) {
         return NULL;
-	}
+    }
 
     module->zcopy_support = (mca_smsc != NULL);
     module->zcopy_map_support = mca_smsc_base_has_feature(MCA_SMSC_FEATURE_CAN_MAP);
@@ -209,7 +209,7 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *ompi_module,
         int err = xhc_read_op_config(module, comm, t);
         if(err != OMPI_SUCCESS) {
             return err;
-		}
+        }
     }
 
     // ---
@@ -219,7 +219,7 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *ompi_module,
          * any op that we won't support */
         if(MODULE_COLL_FN(module, t) == NULL) {
             continue;
-		}
+        }
 
         void (*fallback_fn)(void), *fallback_module;
         GET_COLL_API(comm, t, &fallback_fn, &fallback_module);
@@ -267,12 +267,12 @@ void mca_coll_xhc_module_set_coll_fns(ompi_communicator_t *comm,
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         if(!new_fns->coll_fn[t]) {
             continue;
-		}
+        }
 
         if(saved_fns_dst) {
             GET_COLL_API(comm, t, &saved.coll_fn[t],
-				&saved.coll_module[t]);
-		}
+                &saved.coll_module[t]);
+        }
 
         INSTALL_COLL_API(comm, t, new_fns->coll_fn[t],
             new_fns->coll_module[t]);
@@ -280,5 +280,5 @@ void mca_coll_xhc_module_set_coll_fns(ompi_communicator_t *comm,
 
     if(saved_fns_dst) {
         *saved_fns_dst = saved;
-	}
+    }
 }

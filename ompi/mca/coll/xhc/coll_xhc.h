@@ -38,7 +38,7 @@
 #define RETURN_WITH_ERROR(var, err, label) do {(var) = (err); goto label;} \
     while(0)
 
-#define OBJ_RELEASE_IF_NOT_NULL(obj) do {if((obj) != NULL) {OBJ_RELEASE(obj);}} while(0)
+#define OBJ_RELEASE_IF_NOT_NULL(obj) do {if(NULL != (obj)) {OBJ_RELEASE(obj);}} while(0)
 
 #define REALLOC(p, s, t) do {void *_tmp = realloc(p, (s)*sizeof(t)); \
     if(_tmp) {(p) = _tmp;}} while(0)

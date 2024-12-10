@@ -39,13 +39,13 @@ static void xhc_barrier_leader(xhc_comm_t *comms, int comm_count,
         }
 
         // The member with the lowest ID (ie. the owner) becomes the leader
-        if(xc->my_id == 0) {
+        if(0 == xc->my_id) {
             xc->comm_ctrl->leader_seq = seq;
             xc->is_leader = true;
         }
 
         // Non-leaders exit; they can't become leaders on higher levels
-        if(xc->is_leader == false) {
+        if(false == xc->is_leader) {
             break;
         }
     }
@@ -71,7 +71,7 @@ int mca_coll_xhc_barrier(ompi_communicator_t *ompi_comm,
 
     if(!module->op_data[XHC_BARRIER].init) {
         int err = xhc_init_op(module, ompi_comm, XHC_BARRIER);
-        if(err != OMPI_SUCCESS) {goto _fallback_permanent;}
+        if(OMPI_SUCCESS != err) {goto _fallback_permanent;}
     }
 
     xhc_peer_info_t *peer_info = module->peer_info;
@@ -109,7 +109,7 @@ int mca_coll_xhc_barrier(ompi_communicator_t *ompi_comm,
 
     // 2. Wait for ACK (root won't wait!)
     for(xhc_comm_t *xc = comms; xc; xc = xc->up) {
-        if(xc->is_leader == false) {
+        if(false == xc->is_leader) {
             WAIT_FLAG(&xc->comm_ctrl->ack, seq, 0);
             break;
         }

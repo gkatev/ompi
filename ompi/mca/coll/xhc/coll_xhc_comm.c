@@ -65,7 +65,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
     }
 
     // MPI_Reduce implementation is 'multi-sliced'!
-    if(data->colltype == XHC_REDUCE) {
+    if(XHC_REDUCE == data->colltype) {
         n_slices = 2;
     }
 
@@ -120,13 +120,13 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
          * for this one. Every rank advertises whether others may consider
          * it for inclusion on this one via an Allgather. */
 
-        bool is_candidate = (comm_count == 0
+        bool is_candidate = (0 == comm_count
             || rank == comms[comm_count - 1].owner_rank);
 
         err = ompi_comm->c_coll->coll_allgather(&is_candidate, 1,
             MPI_C_BOOL, candidate_list, 1, MPI_C_BOOL,
             ompi_comm, ompi_comm->c_coll->coll_allgather_module);
-        if(err != OMPI_SUCCESS) {
+        if(OMPI_SUCCESS != err) {
             RETURN_WITH_ERROR(return_code, err, comm_error);
         }
 
@@ -135,7 +135,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
              * Don't get tempted to omit this check for the bottom comm; even
              * if this is the local's rank's bottom comm, it may not be for a
              * peer of his (e.g. with some non-symmetric hierarchies). */
-            if(candidate_list[r] == false) {
+            if(false == candidate_list[r]) {
                 continue;
             }
 
@@ -154,7 +154,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
             }
 
             // First rank to join the comm becomes the owner
-            if(xc->owner_rank == -1) {
+            if(-1 == xc->owner_rank) {
                 xc->owner_rank = r;
             }
 
@@ -179,7 +179,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
                 sizeof(opal_shmem_ds_t), MPI_BYTE, ds_list,
                 sizeof(opal_shmem_ds_t), MPI_BYTE, ompi_comm,
                 ompi_comm->c_coll->coll_allgather_module);
-            if(err != OMPI_SUCCESS) {
+            if(OMPI_SUCCESS != err) {
                 RETURN_WITH_ERROR(return_code, err, comm_error);
             }
 
@@ -192,13 +192,13 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
         /* Init comm stuff */
 
         xc->member_info = calloc(xc->size, sizeof(xhc_member_info_t));
-        if(xc->member_info == NULL) {
+        if(NULL == xc->member_info) {
             RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, comm_error);
         }
 
         xc->my_info = &xc->member_info[xc->my_id];
 
-        if(data->colltype == XHC_REDUCE || data->colltype == XHC_ALLREDUCE) {
+        if(XHC_REDUCE == data->colltype || XHC_ALLREDUCE == data->colltype) {
             xc->reduce_queue = OBJ_NEW(opal_list_t);
             if(!xc->reduce_queue) {RETURN_WITH_ERROR(return_code,
                 OMPI_ERR_OUT_OF_RESOURCE, comm_error);}
@@ -221,13 +221,13 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
             size_t ds_len = sizeof(xhc_comm_ctrl_t) + smsc_reg_size
                 + xc->size * sizeof(xhc_member_ctrl_t) * xc->n_slices;
 
-            if(data->colltype == XHC_REDUCE || data->colltype == XHC_ALLREDUCE) {
+            if(XHC_REDUCE == data->colltype || XHC_ALLREDUCE == data->colltype) {
                 ds_len += xc->size * xc->cico_size * xc->n_slices;
             }
 
             ds_base = xhc_shmem_create(&xc->comm_ds, ds_len,
                 ompi_comm, "ctrl", data->colltype, comm_count);
-            if(ds_base == NULL) {
+            if(NULL == ds_base) {
                 RETURN_WITH_ERROR(return_code, OMPI_ERROR, comm_error);
             }
 
@@ -274,7 +274,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
             sizeof(opal_shmem_ds_t), MPI_BYTE, ds_list,
             sizeof(opal_shmem_ds_t), MPI_BYTE, ompi_comm,
             ompi_comm->c_coll->coll_allgather_module);
-        if(err != OMPI_SUCCESS) {
+        if(OMPI_SUCCESS != err) {
             RETURN_WITH_ERROR(return_code, err, comm_error);
         }
 
@@ -283,7 +283,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
             xc->comm_ds = ds_list[xc->owner_rank];
 
             ds_base = xhc_shmem_attach(&xc->comm_ds);
-            if(ds_base == NULL) {
+            if(NULL == ds_base) {
                 RETURN_WITH_ERROR(return_code, OMPI_ERROR, comm_error);
             }
         }
@@ -294,7 +294,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
         xc->member_ctrl_base = (void *) (ds_base
             + sizeof(xhc_comm_ctrl_t) + smsc_reg_size);
 
-        if(data->colltype == XHC_REDUCE || data->colltype == XHC_ALLREDUCE) {
+        if(XHC_REDUCE == data->colltype || XHC_ALLREDUCE == data->colltype) {
             xc->reduce_buffer_base = (void *) (ds_base
                 + sizeof(xhc_comm_ctrl_t) + smsc_reg_size
                 + xc->size * sizeof(xhc_member_ctrl_t) * xc->n_slices);
@@ -326,8 +326,8 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
         comms[i].top = &comms[comm_count - 1];
         comms[i].bottom = &comms[0];
 
-        comms[i].is_top = (comms[i].up == NULL);
-        comms[i].is_bottom = (comms[i].down == NULL);
+        comms[i].is_top = (NULL == comms[i].up);
+        comms[i].is_bottom = (NULL == comms[i].down);
     }
 
     if(config->chunks_len > 1 && config->chunks_len < comm_count) {
@@ -360,7 +360,7 @@ int mca_coll_xhc_comms_make(ompi_communicator_t *ompi_comm,
     free(candidate_list);
     free(ds_list);
 
-    if(return_code != OMPI_SUCCESS) {
+    if(OMPI_SUCCESS != return_code) {
         free(comms);
     }
 
@@ -373,7 +373,7 @@ void mca_coll_xhc_comms_destroy(xhc_comm_t *comms, int comm_count) {
     for(int i = 0; i < comm_count; i++) {
         xhc_comm_t *xc = &comms[i];
 
-        if(xc->my_id != 0) {
+        if(0 != xc->my_id) {
             is_owner = false;
         }
 

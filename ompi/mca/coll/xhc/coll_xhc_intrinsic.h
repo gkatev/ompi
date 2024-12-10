@@ -71,10 +71,10 @@ typedef size_t __attribute__((aligned(SIZEOF_SIZE_T))) xf_size_t;
 
 // If/when opal atomic load/store is added, and if opal atomic load/store int is not
 
-/* #if SIZEOF_INT == 4
+/* #if 4 == SIZEOF_INT
 	#define xhc_atomic_load_int(addr) opal_atomic_load_32 ((opal_atomic_int32_t *) addr)
 	#define xhc_atomic_store_int(addr, val) opal_atomic_store_32 ((opal_atomic_int32_t *) addr, val)
-#elif SIZEOF_INT == 8
+#elif 8 == SIZEOF_INT
 	#define xhc_atomic_load_int(addr) opal_atomic_load_64 ((opal_atomic_int64_t *) addr)
 	#define xhc_atomic_store_int(addr, val) opal_atomic_store_64 ((opal_atomic_int64_t *) addr, val)
 #else
@@ -84,10 +84,10 @@ typedef size_t __attribute__((aligned(SIZEOF_SIZE_T))) xf_size_t;
 
 // If/when opal atomic load/store is added, and if opal atomic load/store size_t is not
 
-/* #if SIZEOF_SIZE_T == 4
+/* #if 4 == SIZEOF_SIZE_T
 	#define xhc_atomic_load_size_t(addr) opal_atomic_load_32 ((opal_atomic_int32_t *) addr)
 	#define xhc_atomic_store_size_t(addr, val) opal_atomic_store_32 ((opal_atomic_int32_t *) addr, val)
-#elif SIZEOF_SIZE_T == 8
+#elif 8 == SIZEOF_SIZE_T
 	#define xhc_atomic_load_size_t(addr) opal_atomic_load_64 ((opal_atomic_int64_t *) addr)
 	#define xhc_atomic_store_size_t(addr, val) opal_atomic_store_64 ((opal_atomic_int64_t *) addr, val)
 #else

@@ -134,11 +134,11 @@ mca_coll_base_module_t *mca_coll_xhc_module_comm_query(ompi_communicator_t *comm
 
     if((*priority = mca_coll_xhc_component.priority) < 0) {
         return NULL;
-	}
+    }
 
     int comm_size = ompi_comm_size(comm);
 
-    if(OMPI_COMM_IS_INTER(comm) || comm_size == 1
+    if(OMPI_COMM_IS_INTER(comm) || 1 == comm_size
             || ompi_group_have_remote_peers (comm->c_local_group)) {
 
         opal_output_verbose(MCA_BASE_VERBOSE_COMPONENT,
@@ -165,11 +165,11 @@ mca_coll_base_module_t *mca_coll_xhc_module_comm_query(ompi_communicator_t *comm
 
     mca_coll_xhc_module_t *module = OBJ_NEW(mca_coll_xhc_module_t);
 
-    if(module == NULL) {
+    if(NULL == module) {
         return NULL;
     }
 
-    module->zcopy_support = (mca_smsc != NULL);
+    module->zcopy_support = (NULL != mca_smsc);
     module->zcopy_map_support = mca_smsc_base_has_feature(MCA_SMSC_FEATURE_CAN_MAP);
 
     if(!module->zcopy_support) {
@@ -207,7 +207,7 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *ompi_module,
      * (e.g. checking cico and single-copy support at the beginning of ops). */
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         int err = xhc_read_op_config(module, comm, t);
-        if(err != OMPI_SUCCESS) {
+        if(OMPI_SUCCESS != err) {
             return err;
         }
     }
@@ -217,14 +217,14 @@ int mca_coll_xhc_module_enable(mca_coll_base_module_t *ompi_module,
     for(int t = 0; t < XHC_COLLCOUNT; t++) {
         /* Don't want to save a fallback for
          * any op that we won't support */
-        if(MODULE_COLL_FN(module, t) == NULL) {
+        if(NULL == MODULE_COLL_FN(module, t)) {
             continue;
         }
 
         void (*fallback_fn)(void), *fallback_module;
         GET_COLL_API(comm, t, &fallback_fn, &fallback_module);
 
-        if(fallback_fn == NULL || fallback_module == NULL) {
+        if(NULL == fallback_fn || NULL == fallback_module) {
             opal_output_verbose(MCA_BASE_VERBOSE_COMPONENT,
                 ompi_coll_base_framework.framework_output,
                 "coll:xhc:module_enable (%s/%s): No previous fallback component "

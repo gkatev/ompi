@@ -71,7 +71,7 @@ static void init_reduce_areas(xhc_comm_t *comms, size_t allreduce_count,
             }
 
             if(lb_policy & XHC_REDUCE_LB_LEADER_ASSIST_FIRST_CHUNK) {
-                if(area_id == 0 && workers < xc->size) {
+                if(0 == area_id && workers < xc->size) {
                     workers++;
                 }
             }
@@ -148,7 +148,7 @@ static void init_reduce_areas(xhc_comm_t *comms, size_t allreduce_count,
             }
 
             // If this is the middle area, try to maximize its size
-            if(area_id == 1 && workers > 0) {
+            if(1 == area_id && workers > 0) {
                 size_t set = workers * elems_per_member;
                 repeat = (size_t)((remaining-area_elems)/set);
                 area_elems += repeat * set;
@@ -192,8 +192,8 @@ static void init_reduce_areas(xhc_comm_t *comms, size_t allreduce_count,
 
         // Erase zero-work areas
         while(xc->n_reduce_areas > 0
-                && xc->reduce_areas[xc->n_reduce_areas - 1].work_chunk == 0
-                && xc->reduce_areas[xc->n_reduce_areas - 1].work_leftover == 0) {
+                && 0 == xc->reduce_areas[xc->n_reduce_areas - 1].work_chunk
+                && 0 == xc->reduce_areas[xc->n_reduce_areas - 1].work_leftover) {
             xc->n_reduce_areas--;
         }
 
@@ -218,7 +218,7 @@ static void xhc_allreduce_init_local(xhc_comm_t *comms,
 
         /* Reduce is multi-sliced. In Allreduce, the slice's
          * readiness is guaranteed with other mechanisms. */
-        xc->slice_ready = (colltype != XHC_REDUCE);
+        xc->slice_ready = (XHC_REDUCE != colltype);
         xc->slice_id = seq % xc->n_slices;
 
         /* Set pointers to the current slice's shared sync structs */
@@ -239,7 +239,7 @@ static void xhc_allreduce_init_local(xhc_comm_t *comms,
         /* The owner is the leader. Even in the dynamic reduce case,
          * there (currently) shouldn't be any real benefit from the
          * leader being dynamic in allreduce. */
-        if(xc->my_id != 0) {
+        if(0 != xc->my_id) {
             break;
         }
 
@@ -327,13 +327,13 @@ static int xhc_allreduce_init_member(xhc_comm_t *xc, xhc_peer_info_t *peer_info,
 
     // ---
 
-    if(method == XHC_COPY_IMM) {
+    if(XHC_COPY_IMM == method) {
         memcpy((void *) xc->my_ctrl->imm_data, sbuf, allreduce_count * dtype_size);
     } else {
         xc->my_ctrl->rank = rank;
         xc->my_ctrl->is_leader = (xc->is_leader);
 
-        if(method == XHC_COPY_SMSC) {
+        if(XHC_COPY_SMSC == method) {
             xc->my_ctrl->sbuf_vaddr = (xc->is_bottom ? sbuf : rbuf);
             xc->my_ctrl->rbuf_vaddr = (xc->is_leader ? rbuf : NULL);
         }
@@ -342,7 +342,7 @@ static int xhc_allreduce_init_member(xhc_comm_t *xc, xhc_peer_info_t *peer_info,
     /* In single or imm copy, the data on the bottom comm is
      * already in place and ready to be read by other members. */
     xc->my_ctrl->reduce_ready = (xc->reduce_ready = (xc->is_bottom
-        && method != XHC_COPY_CICO ? allreduce_count : 0));
+        && XHC_COPY_CICO != method ? allreduce_count : 0));
 
     xc->my_ctrl->reduce_done = (xc->reduce_done = rq_first->count);
 
@@ -382,7 +382,7 @@ static int xhc_allreduce_init_member(xhc_comm_t *xc, xhc_peer_info_t *peer_info,
 
     /* If we're doing CICO broadcast, arrange for the top-comm
      * results to be directly placed on the root's CICO buffer. */
-    if(bcast_method == XHC_COPY_CICO && xc->is_top && xc->is_leader) {
+    if(XHC_COPY_CICO == bcast_method && xc->is_top && xc->is_leader) {
         xc->my_info->rbuf = xhc_get_cico(peer_info, rank);
     }
 
@@ -407,7 +407,7 @@ static int xhc_allreduce_attach_member(xhc_comm_t *xc, int member,
 
     /* If we're doing CICO broadcast, arrange for the top-comm
      * results to be directly placed on the root's CICO buffer. */
-    if(bcast_method == XHC_COPY_CICO && xc->is_top && m_ctrl->is_leader) {
+    if(XHC_COPY_CICO == bcast_method && xc->is_top && m_ctrl->is_leader) {
         m_info->rbuf = xhc_get_cico(peer_info, m_ctrl->rank);
     }
 
@@ -438,7 +438,7 @@ static int xhc_allreduce_attach_member(xhc_comm_t *xc, int member,
             m_info->sbuf = xhc_get_registration(&peer_info[m_ctrl->rank],
                 sbuf_vaddr, bytes, &m_info->sbuf_reg);
 
-            if(m_info->sbuf == NULL) {
+            if(NULL == m_info->sbuf) {
                 return OMPI_ERR_UNREACH;
             }
 
@@ -447,7 +447,7 @@ static int xhc_allreduce_attach_member(xhc_comm_t *xc, int member,
                     m_info->rbuf = xhc_get_registration(&peer_info[m_ctrl->rank],
                         rbuf_vaddr, bytes, &m_info->rbuf_reg);
 
-                    if(m_info->rbuf == NULL) {
+                    if(NULL == m_info->rbuf) {
                         return OMPI_ERR_UNREACH;
                     }
                 } else {
@@ -463,7 +463,7 @@ static int xhc_allreduce_attach_member(xhc_comm_t *xc, int member,
     }
 
     // In imm, is_leader is repurposed for payload storage
-    if(method != XHC_COPY_IMM && m_ctrl->is_leader) {
+    if(XHC_COPY_IMM != method && m_ctrl->is_leader) {
         xc->leader_id = member;
     }
 
@@ -544,11 +544,11 @@ static bool xhc_allreduce_slice_claim(xhc_comm_t *xc, xhc_peer_info_t *peer_info
                 rank, seq, false);
         }
 
-        if(err == OMPI_SUCCESS) {
+        if(OMPI_SUCCESS == err) {
             *slice = (xhc_sh_slice_t) {
                 .in_use = true, .seq = seq,
                 .len = allreduce_count * dtype_size,
-                .is_cico = (method == XHC_COPY_CICO)
+                .is_cico = (XHC_COPY_CICO == method)
             };
 
             xc->slice_ready = true;
@@ -640,7 +640,7 @@ static void xhc_reduce_ack(xhc_comm_t *comms,
          * application is free to modify it). In CICO mode, we have increased
          * control over our internal buffer(s), and members are allowed to exit
          * even before all reductions have been completed. */
-        if(!xc->is_leader && method == XHC_COPY_SMSC) {
+        if(!xc->is_leader && XHC_COPY_SMSC == method) {
             WAIT_FLAG(&xc->comm_ctrl->ack, seq, 0);
         }
 
@@ -726,7 +726,7 @@ static int xhc_allreduce_reduce_get_next(xhc_comm_t *xc, xhc_peer_info_t *peer_i
             int err = xhc_allreduce_attach_member(xc, member, peer_info,
                 allreduce_count * dtype_size, method, bcast_method, seq);
 
-            if(err != OMPI_SUCCESS) {
+            if(OMPI_SUCCESS != err) {
                 return err;
             }
         }
@@ -785,7 +785,7 @@ static void xhc_allreduce_do_reduce(xhc_comm_t *xc, xhc_rq_item_t *member_item,
     /* Remember that member_item is not currently in
      * the queue, as we removed it in get_next(). */
 
-    if(opal_list_get_size(xc->reduce_queue) == 0) {
+    if(0 == opal_list_get_size(xc->reduce_queue)) {
         first_reduction = true;
         last_reduction = true;
     } else {
@@ -819,7 +819,7 @@ static void xhc_allreduce_do_reduce(xhc_comm_t *xc, xhc_rq_item_t *member_item,
      * the members has member_ctrl->is_leader=true). In imm, is_leader is
      * repurposed for the payload, but in that case we force the leader to
      * do all reductions, so really he's the only that needs to know. */
-    assert(method != XHC_COPY_IMM || xc->is_leader);
+    assert(XHC_COPY_IMM != method || xc->is_leader);
     assert(!last_reduction || xc->leader_id >= 0);
 
     if(last_reduction) {
@@ -939,12 +939,12 @@ int mca_coll_xhc_allreduce_internal(const void *sbuf, void *rbuf, size_t count,
 
     if(!module->op_data[colltype].init) {
         err = xhc_init_op(module, ompi_comm, colltype);
-        if(err != OMPI_SUCCESS) {goto _fallback_permanent;}
+        if(OMPI_SUCCESS != err) {goto _fallback_permanent;}
     }
 
     if(require_bcast && !module->op_data[XHC_BCAST].init) {
         err = xhc_init_op(module, ompi_comm, XHC_BCAST);
-        if(err != OMPI_SUCCESS) {goto _fallback_permanent_bcast;}
+        if(OMPI_SUCCESS != err) {goto _fallback_permanent_bcast;}
     }
 
     // ---
@@ -997,14 +997,14 @@ int mca_coll_xhc_allreduce_internal(const void *sbuf, void *rbuf, size_t count,
     /* In XHC_COPY_IMM, we force the leaders to perform the reductions,
      * to greatly simplify imm buffer management. Don't see any reason
      * for any other member to do them anyway... */
-    if(method == XHC_COPY_IMM) {lb_policy = XHC_REDUCE_LB_LEADER_ASSIST_ALL;}
+    if(XHC_COPY_IMM == method) {lb_policy = XHC_REDUCE_LB_LEADER_ASSIST_ALL;}
     else {lb_policy = mca_coll_xhc_component.reduce_load_balance;}
 
     /* We require a buffer to store intermediate data. In cases like MPI_Ruduce,
      * non-root ranks don't normally have an rbuf, so allocate an internal one.
      * TODO: Strictly speaking, the members that won't do reductions, shouldn't
      * require an rbuf; consult this and don't allocate one for them?? */
-    if(rbuf == NULL) {
+    if(NULL == rbuf) {
         if(module->rbuf_size < bytes_total) {
             void *new_rbuf = realloc(module->rbuf, bytes_total);
             if(!new_rbuf) {return OPAL_ERR_OUT_OF_RESOURCE;}
@@ -1016,7 +1016,7 @@ int mca_coll_xhc_allreduce_internal(const void *sbuf, void *rbuf, size_t count,
         rbuf = module->rbuf;
     }
 
-    if(sbuf == MPI_IN_PLACE) {
+    if(MPI_IN_PLACE == sbuf) {
         sbuf = rbuf;
     }
 
@@ -1049,7 +1049,7 @@ _allreduce: {
      * if bcast is also CICO, the data will end up getting placed directly
      * on the root's bcast cico buffer (not a problem for setting bcast_buf,
      * just so you know there's a bit more to it!). */
-    if(method == XHC_COPY_CICO && rank == root && !comms->top->do_all_work) {
+    if(XHC_COPY_CICO == method && rank == root && !comms->top->do_all_work) {
         bcast_buf = CICO_BUFFER(comms->top, comms->top->my_id);
     }
 
@@ -1067,7 +1067,7 @@ _allreduce: {
     for(size_t bytes_done = 0; bytes_done < bytes_total; ) {
 
         // CICO mode, copy-in phase
-        if(method == XHC_COPY_CICO && comms->bottom->reduce_ready < count) {
+        if(XHC_COPY_CICO == method && comms->bottom->reduce_ready < count) {
             xhc_allreduce_cico_publish(comms->bottom, (void *) sbuf,
                 peer_info, rank, count, dtype_size);
         }
@@ -1080,7 +1080,7 @@ _allreduce: {
                 err = xhc_allreduce_reduce_get_next(xc, peer_info, count,
                     dtype_size, method, bcast_ctx.method, out_of_order_reduce,
                     seq, &member_item);
-                if(err != OMPI_SUCCESS) {return err;}
+                if(OMPI_SUCCESS != err) {return err;}
 
                 if(member_item) {
                     xhc_allreduce_do_reduce(xc, member_item, rbuf,
@@ -1139,7 +1139,7 @@ _allreduce: {
             if(xc->up && completed > xc->up->reduce_ready) {
                 /* In imm mode: copy the data into my ctrl on
                  * the next level as part of the propagation. */
-                if(method == XHC_COPY_IMM) {
+                if(XHC_COPY_IMM == method) {
                     size_t up_bytes_ready = xc->up->reduce_ready * dtype_size;
                     xhc_memcpy_offset((void *) xc->up->my_ctrl->imm_data,
                         xc->my_info->rbuf, up_bytes_ready,
@@ -1179,8 +1179,8 @@ _allreduce: {
 
         if(!bcast_started) {
             err = xhc_bcast_start(&bcast_ctx);
-            if(err == OMPI_SUCCESS) {bcast_started = true;}
-            else if(err != OMPI_ERR_WOULD_BLOCK) {return err;}
+            if(OMPI_SUCCESS == err) {bcast_started = true;}
+            else if(OMPI_ERR_WOULD_BLOCK != err) {return err;}
         }
 
         if(bcast_ctx.src_comm && bcast_ctx.bytes_done < bcast_ctx.bytes_total) {
@@ -1193,7 +1193,7 @@ _allreduce: {
 
             err = xhc_bcast_work(&bcast_ctx);
 
-            if(err != OMPI_SUCCESS && err != OMPI_ERR_WOULD_BLOCK) {
+            if(OMPI_SUCCESS != err && OMPI_ERR_WOULD_BLOCK != err) {
                 return err;
             }
 
@@ -1208,8 +1208,8 @@ _allreduce: {
      * its children (e.g. because they were still active in a previous op). */
     while(!bcast_started) {
         err = xhc_bcast_start(&bcast_ctx);
-        if(err == OMPI_SUCCESS) {bcast_started = true;}
-        else if(err != OMPI_ERR_WOULD_BLOCK) {return err;}
+        if(OMPI_SUCCESS == err) {bcast_started = true;}
+        else if(OMPI_ERR_WOULD_BLOCK != err) {return err;}
     }
 
     xhc_allreduce_ack(comms, seq, &bcast_ctx);
@@ -1218,7 +1218,7 @@ _allreduce: {
 
     /* See respective comment in xhc_bcast_fini(). Note that prefetchw is also
      * used in Reduce, but that happens inside xhc_allreduce_slice_gc(). */
-    if(method == XHC_COPY_CICO) {
+    if(XHC_COPY_CICO == method) {
         for(xhc_comm_t *xc = comms; xc; xc = xc->up) {
             xhc_prefetchw(CICO_BUFFER(xc, xc->my_id), bytes_total, 2);
             if(!xc->is_leader) {break;}
@@ -1250,7 +1250,7 @@ _reduce: {
 
             /* CICO mode, copy-in phase. Watch out, unlike Allreduce,
              * we want this here, *after* we've claimed the slice. */
-            if(method == XHC_COPY_CICO && xc->is_bottom && xc->reduce_ready < count) {
+            if(XHC_COPY_CICO == method && xc->is_bottom && xc->reduce_ready < count) {
                 xhc_allreduce_cico_publish(xc, (void *) sbuf,
                     peer_info, rank, count, dtype_size);
             }
@@ -1259,7 +1259,7 @@ _reduce: {
                 /* In CICO mode, reductions results are stored directly
                  * on the buffer on the next level; make sure we are
                  * allowed to do this (by reserving a slice). */
-                if(method == XHC_COPY_CICO && xc->up && !xc->up->slice_ready) {
+                if(XHC_COPY_CICO == method && xc->up && !xc->up->slice_ready) {
                     xhc_allreduce_slice_claim(xc->up, peer_info, (void *) sbuf,
                         rbuf, count, dtype_size, method, 0, rank, seq);
 
@@ -1272,7 +1272,7 @@ _reduce: {
 
                 err = xhc_allreduce_reduce_get_next(xc, peer_info, count,
                     dtype_size, method, 0, out_of_order_reduce, seq, &member_item);
-                if(err != OMPI_SUCCESS) {return err;}
+                if(OMPI_SUCCESS != err) {return err;}
 
                 if(member_item) {
                     xhc_allreduce_do_reduce(xc, member_item, rbuf,
@@ -1343,7 +1343,7 @@ _reduce: {
             if(xc->up && completed > xc->up->reduce_ready) {
                 /* In imm mode: copy the data into my ctrl on
                  * the next level as part of the propagation. */
-                if(method == XHC_COPY_IMM) {
+                if(XHC_COPY_IMM == method) {
                     size_t up_bytes_ready = xc->up->reduce_ready * dtype_size;
                     xhc_memcpy_offset((void *) xc->up->my_ctrl->imm_data,
                         xc->my_info->rbuf, up_bytes_ready,
@@ -1377,7 +1377,7 @@ _reduce: {
 
 _finish:
 
-    if(method == XHC_COPY_SMSC) {
+    if(XHC_COPY_SMSC == method) {
         xhc_allreduce_disconnect_peers(comms);
     }
 

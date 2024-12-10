@@ -30,7 +30,7 @@ int mca_coll_xhc_reduce(const void *sbuf, void *rbuf,
 
     /* Currently, XHC's reduce only supports the top-level
      * owner as the root (typically rank 0). */
-    if(root == 0) {
+    if(0 == root) {
         return mca_coll_xhc_allreduce_internal(sbuf, rbuf, count,
             datatype, op, ompi_comm, ompi_module, false);
     } else {

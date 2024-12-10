@@ -48,14 +48,14 @@ int mca_coll_xhc_hierarchy_make(xhc_module_t *module,
 
     err = xhc_component_parse_hierarchy(hierarchy_string,
         &level_defs, &nlevel_defs);
-    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
+    if(OMPI_SUCCESS != err) {RETURN_WITH_ERROR(return_code, err, end);}
 
     err = xhc_hierarchy_create(module, comm, level_defs,
         nlevel_defs, &hierarchy, &hierarchy_len);
-    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
+    if(OMPI_SUCCESS != err) {RETURN_WITH_ERROR(return_code, err, end);}
 
     err = xhc_hierarchy_sort(module, comm, &hierarchy, &hierarchy_len);
-    if(err != OMPI_SUCCESS) {RETURN_WITH_ERROR(return_code, err, end);}
+    if(OMPI_SUCCESS != err) {RETURN_WITH_ERROR(return_code, err, end);}
 
     // ---
 
@@ -69,7 +69,7 @@ int mca_coll_xhc_hierarchy_make(xhc_module_t *module,
     }
     free(level_defs);
 
-    if(err != OMPI_SUCCESS) {
+    if(OMPI_SUCCESS != err) {
         free(hierarchy);
     }
 
@@ -128,7 +128,7 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
             || def_0->split > 1 || def_0->max_ranks > 0);
 
         if(is_virtual) {
-            if(nvirt_hiers == XHC_LOC_EXT_BITS) {
+            if(XHC_LOC_EXT_BITS == nvirt_hiers) {
                 opal_show_help("help-coll-xhc.txt", "too-many-virt-hiers", true);
                 RETURN_WITH_ERROR(return_code, OMPI_ERR_NOT_SUPPORTED, end);
             }
@@ -183,13 +183,13 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
                 continue;
             }
 
-            int ticket = (my_def == NULL ? rank : (dir_fwd ? comm_size : -1));
+            int ticket = (NULL == my_def ? rank : (dir_fwd ? comm_size : -1));
             int chosen;
 
             err = comm->c_coll->coll_allreduce(&ticket, &chosen, 1,
                 MPI_INT, (dir_fwd ? MPI_MIN : MPI_MAX), comm,
                 comm->c_coll->coll_allreduce_module);
-            if(err != OMPI_SUCCESS) {
+            if(OMPI_SUCCESS != err) {
                 RETURN_WITH_ERROR(return_code, err, end);
             }
 
@@ -213,11 +213,11 @@ static int xhc_hierarchy_create(xhc_module_t *module, ompi_communicator_t *comm,
         err = comm->c_coll->coll_allgather(&follow_loc, 1,
             hwloc_locality_type, loc_list, 1, hwloc_locality_type,
             comm, comm->c_coll->coll_allgather_module);
-        if(err != OMPI_SUCCESS) {
+        if(OMPI_SUCCESS != err) {
             RETURN_WITH_ERROR(return_code, err, end);
         }
 
-        if(my_def == NULL) {
+        if(NULL == my_def) {
             continue;
         }
 
@@ -303,7 +303,7 @@ end:
     free(rank_list);
     free(loc_list);
 
-    if(return_code != OMPI_SUCCESS) {
+    if(OMPI_SUCCESS != return_code) {
         free(hierarchy);
     }
 
@@ -328,7 +328,7 @@ static int xhc_hierarchy_sort(mca_coll_xhc_module_t *module,
     new_hier = malloc((hier_len + 1) * sizeof(xhc_loc_t));
     hier_done = calloc(hier_len, sizeof(bool));
 
-    if(new_hier == NULL || hier_done == NULL) {
+    if(NULL == new_hier || NULL == hier_done) {
         RETURN_WITH_ERROR(return_code, OMPI_ERR_OUT_OF_RESOURCE, end);
     }
 
@@ -371,7 +371,7 @@ static int xhc_hierarchy_sort(mca_coll_xhc_module_t *module,
                 }
             }
 
-            assert(max_matches_count != -1);
+            assert(-1 != max_matches_count);
 
             new_hier[new_idx] = old_hier[max_matches_hier_idx];
             hier_done[max_matches_hier_idx] = true;
@@ -385,7 +385,7 @@ static int xhc_hierarchy_sort(mca_coll_xhc_module_t *module,
         common_locality &= proc->super.proc_flags;
     }
 
-    if(common_locality == 0) {
+    if(0 == common_locality) {
         opal_output_verbose(MCA_BASE_VERBOSE_COMPONENT,
             ompi_coll_base_framework.framework_output,
             "coll:xhc: Error: There is no locality common "
@@ -394,7 +394,7 @@ static int xhc_hierarchy_sort(mca_coll_xhc_module_t *module,
         RETURN_WITH_ERROR(return_code, OMPI_ERR_NOT_SUPPORTED, end);
     }
 
-    if(hier_len == 0 || (common_locality & new_hier[hier_len - 1])
+    if(0 == hier_len || (common_locality & new_hier[hier_len - 1])
             != new_hier[hier_len - 1]) {
 
         new_hier[hier_len] = common_locality;
@@ -412,7 +412,7 @@ end:
 
     free(hier_done);
 
-    if(return_code != OMPI_SUCCESS) {
+    if(OMPI_SUCCESS != return_code) {
         free(new_hier);
     }
 
